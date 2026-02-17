@@ -42,7 +42,7 @@ export default function Home() {
       if (!response.ok) throw new Error('Error al crear tarea')
 
       const newTask = await response.json()
-      setTasks([newTask, ...tasks])
+      setTasks(prev => [newTask, ...prev])
       setNewTaskTitle('')
     } catch (error) {
       console.error('Error:', error)
@@ -53,20 +53,56 @@ export default function Home() {
   }
 
   const handleToggleComplete = async (task: Task) => {
+    // Guardar estado original para rollback
+    const previousTasks = tasks
+
+    // Optimistic UI update: actualizar inmediatamente
+    setTasks(prev =>
+      prev.map(t =>
+        t.id === task.id ? { ...t, completed: !t.completed } : t
+      )
+    )
+
+    // Luego sincronizar con el servidor
     try {
       const response = await fetch('/api/tasks', {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: task.id, completed: !task.completed }),
       })
 
       if (!response.ok) throw new Error('Error al actualizar tarea')
-
-      const updatedTask = await response.json()
-      setTasks(tasks.map(t => (t.id === task.id ? updatedTask : t)))
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al actualizar la tarea')
+
+      // Rollback: restaurar estado original si falla
+      setTasks(previousTasks)
+      alert('Error al actualizar la tarea. Se revirtió el cambio.')
+    }
+  }
+
+  const handleDeleteTask = async (task: Task) => {
+    // Guardar estado original para rollback
+    const previousTasks = tasks
+
+    // Optimistic UI update: remover inmediatamente
+    setTasks(prev => prev.filter(t => t.id !== task.id))
+
+    // Luego sincronizar con el servidor
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: task.id }),
+      })
+
+      if (!response.ok) throw new Error('Error al eliminar tarea')
+    } catch (error) {
+      console.error('Error:', error)
+
+      // Rollback: restaurar estado original si falla
+      setTasks(previousTasks)
+      alert('Error al eliminar la tarea. Se revirtió el cambio.')
     }
   }
 
@@ -77,10 +113,10 @@ export default function Home() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2">
-              📝 Gestor de Tareas
+              Gestor de Tareas
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Organiza tu día de forma simple y efectiva
+              Organiza tu dia de forma simple y efectiva
             </p>
           </div>
 
@@ -91,7 +127,7 @@ export default function Home() {
                 type="text"
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="¿Qué necesitas hacer?"
+                placeholder="Que necesitas hacer?"
                 className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 disabled={submitting}
               />
@@ -113,9 +149,8 @@ export default function Home() {
             </div>
           ) : tasks.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">🎉</div>
               <p className="text-gray-600 dark:text-gray-400 text-lg">
-                ¡No hay tareas! Agrega una para comenzar.
+                No hay tareas. Agrega una para comenzar.
               </p>
             </div>
           ) : (
@@ -123,7 +158,11 @@ export default function Home() {
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors group"
+                  className={`flex items-center gap-3 p-4 rounded-lg transition-colors group ${
+                    task.completed
+                      ? 'bg-gray-100 dark:bg-gray-700/50 opacity-60'
+                      : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
+                  }`}
                 >
                   <input
                     type="checkbox"
@@ -140,17 +179,21 @@ export default function Home() {
                   >
                     {task.title}
                   </span>
-                  {task.completed && (
-                    <span className="text-green-600 dark:text-green-400 text-sm font-medium">
-                      ✓ Completada
-                    </span>
-                  )}
+                  <button
+                    onClick={() => handleDeleteTask(task)}
+                    className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                    aria-label="Eliminar tarea"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Footer con estadísticas */}
+          {/* Footer con estadisticas */}
           {tasks.length > 0 && (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">

@@ -51,14 +51,21 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Actualizar una tarea (marcar como completada/no completada)
-export async function PATCH(request: Request) {
+// PUT: Actualizar una tarea (toggle completada, editar título)
+export async function PUT(request: Request) {
   try {
     const { id, completed } = await request.json()
 
     if (!id) {
       return NextResponse.json(
         { error: 'El ID es requerido' },
+        { status: 400 }
+      )
+    }
+
+    if (typeof completed !== 'boolean') {
+      return NextResponse.json(
+        { error: 'El campo completed es requerido' },
         { status: 400 }
       )
     }
@@ -77,6 +84,35 @@ export async function PATCH(request: Request) {
     console.error('Error updating task:', error)
     return NextResponse.json(
       { error: 'Error al actualizar la tarea' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE: Eliminar una tarea
+export async function DELETE(request: Request) {
+  try {
+    const { id } = await request.json()
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'El ID es requerido' },
+        { status: 400 }
+      )
+    }
+
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    return new NextResponse(null, { status: 204 })
+  } catch (error) {
+    console.error('Error deleting task:', error)
+    return NextResponse.json(
+      { error: 'Error al eliminar la tarea' },
       { status: 500 }
     )
   }
