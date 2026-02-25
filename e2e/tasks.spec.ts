@@ -1,9 +1,10 @@
-import { test, expect } from "./fixtures";
+import { test, expect } from "@playwright/test";
+import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - Core Operations", () => {
-  test.beforeEach(async ({ page, cleanDatabase }) => {
-    // Cleanup database
-    await cleanDatabase;
+  test.beforeEach(async ({ page }) => {
+    // Cleanup database before each test
+    await cleanupDatabase();
 
     // Navigate to the home page before each test
     await page.goto("/");

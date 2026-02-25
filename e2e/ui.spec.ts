@@ -1,8 +1,9 @@
-import { test, expect } from "./fixtures";
+import { test, expect } from "@playwright/test";
+import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - UI & Interactions", () => {
-  test.beforeEach(async ({ page, cleanDatabase }) => {
-    await cleanDatabase;
+  test.beforeEach(async ({ page }) => {
+    await cleanupDatabase();
     await page.goto("/");
     await page.waitForLoadState("networkidle");
   });

@@ -10,7 +10,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.warn(
-    "⚠️  Test database credentials not found. Make sure to set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.test"
+    "⚠️  Test database credentials not found. Make sure to set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.test",
   );
 }
 
@@ -19,6 +19,11 @@ const supabase = createClient(supabaseUrl || "", supabaseServiceKey || "");
 /** Deletes all tasks from the test database */
 export async function cleanupDatabase() {
   try {
+    console.log(
+      "🧹 Cleaning up test database...",
+      supabaseUrl ? "✓ URL found" : "✗ URL missing"
+    );
+
     const { error } = await supabase.from("tasks").delete().neq("id", "");
 
     if (error) {
@@ -28,7 +33,7 @@ export async function cleanupDatabase() {
 
     console.log("✅ Database cleaned up successfully");
   } catch (error) {
-    console.error("Failed to cleanup database:", error);
+    console.error("⚠️  Failed to cleanup database:", error);
     // Don't throw - allow tests to continue even if cleanup fails
   }
 }
