@@ -199,19 +199,24 @@ await cleanupDatabase();
 
 ## Key Testing Patterns
 
-### Using Test Fixtures
+### Database Cleanup
 
-All test files should use the custom test fixture:
+All test files automatically clean the database before each test:
 
 ```typescript
-// ✅ Correct
-import { test, expect } from "./fixtures";
+// ✅ All test files do this
+import { cleanupDatabase } from "./helpers/db-cleanup";
 
-test.beforeEach(async ({ page, cleanDatabase }) => {
-  await cleanDatabase;
+test.beforeEach(async ({ page }) => {
+  await cleanupDatabase(); // Clear database before each test
   await page.goto("/");
 });
 ```
+
+This ensures:
+- Each test starts with an empty database
+- Tests don't interfere with each other
+- No data leaks between tests
 
 ### Getting Elements by Test ID
 
