@@ -73,6 +73,56 @@ interface Task {
 const task: any = { ... }
 ```
 
+### Code Documentation
+- ✅ **Add single-line JSDoc comments** above EVERY function and component
+- ✅ **Explain WHAT it does**, not how (the code shows how)
+- ✅ **Be concise** - one line is enough
+- ✅ **Update comments** when refactoring
+
+**Pattern for functions:**
+```typescript
+/** Fetches all tasks for the current user from Supabase */
+async function getTasks(userId: string) {
+  // implementation
+}
+
+/** Toggles task completion status with optimistic UI update */
+const handleToggle = async (id: string) => {
+  // implementation
+}
+```
+
+**Pattern for components:**
+```typescript
+/** Main task list component with create, toggle, and delete actions */
+export default function TaskList() {
+  // implementation
+}
+
+/** Individual task item with checkbox and delete button */
+const TaskItem = ({ task, onToggle, onDelete }: TaskItemProps) => {
+  // implementation
+}
+```
+
+**Pattern for API routes:**
+```typescript
+/** GET /api/tasks - Returns all tasks for authenticated user */
+export async function GET(request: Request) {
+  // implementation
+}
+
+/** POST /api/tasks - Creates a new task for authenticated user */
+export async function POST(request: Request) {
+  // implementation
+}
+```
+
+**DON'T document:**
+- Obvious utility functions (getters/setters)
+- One-liner arrow functions used inline
+- Auto-generated code
+
 ### React Components
 - ✅ **Functional components only** - No class components
 - ✅ **Arrow functions** - `const Component = () => { ... }`
@@ -309,13 +359,51 @@ const handleToggle = async (id: string) => {
 
 ---
 
-## Testing Checklist
+## Testing
+
+### E2E Testing with Playwright
+
+Comprehensive end-to-end tests cover all critical user flows:
+
+**Run all tests:**
+```bash
+npm run test:e2e
+```
+
+**Test files:**
+- `e2e/tasks.spec.ts` - CRUD operations (create, read, toggle, delete)
+- `e2e/stats.spec.ts` - Counter and statistics updates
+- `e2e/ui.spec.ts` - UI interactions, edge cases, loading states
+
+**Available commands:**
+- `npm run test:e2e` - Run all E2E tests
+- `npm run test:e2e:ui` - Interactive test UI with browser
+- `npm run test:e2e:headed` - Show browser while running
+- `npm run test:e2e:debug` - Debug with Playwright Inspector
+- `npx playwright show-report` - View HTML test report
+
+**What's tested:**
+- Creating, reading, updating (toggle), deleting tasks
+- Task statistics (total, completed, pending)
+- UI interactions (loading, hover, focus, form validation)
+- Edge cases (special characters, long titles, rapid submission)
+- Optimistic UI updates with server sync
+- Empty state display
+- Task ordering and styling
+
+**Configuration:**
+- See `playwright.config.ts` for browser/mobile testing setup
+- Tested on: Chromium, Firefox, WebKit, Pixel 5, iPhone 12
+- Auto-starts dev server before tests run
+
+### Testing Checklist
 
 Before considering a feature complete:
 
 - [ ] Feature works in development (`npm run dev`)
 - [ ] No TypeScript errors (`npm run build`)
 - [ ] No console errors or warnings
+- [ ] E2E tests pass (`npm run test:e2e`)
 - [ ] Database updates correctly (check Supabase dashboard)
 - [ ] UI updates reflect database state
 - [ ] Error states are handled gracefully
@@ -391,6 +479,18 @@ Before considering a feature complete:
 
 ---
 
+## Skills Reference
+
+This project uses specialized skills in `.claude/skills/` organized by category. See [`.claude/README.md`](.claude/README.md) for the full list and usage guide.
+
+| Category | Skills |
+|----------|--------|
+| `core/` | `nextjs-skill`, `tailwind-skill`, `typescript-skill`, `supabase-skill` |
+| `features/` | `auth-skill`, `api-skill` |
+| `practices/` | `documentation-skill`, `error-handling-skill`, `security-skill` |
+
+---
+
 ## Notes for AI Assistants (Claude Code)
 
 When I ask you to implement a feature:
@@ -410,16 +510,39 @@ When I ask you to implement a feature:
 
 **Example:**
 > I'll add the toggle completion feature:
-> 
+>
 > 1. Update API route to handle PUT requests
 > 2. Add checkbox to TaskItem component
 > 3. Implement optimistic UI update
-> 
+>
 > **Files changed:**
 > - `/app/api/tasks/route.ts` - Added PUT handler
 > - `/app/page.tsx` - Added handleToggle function and checkbox UI
-> 
+>
 > **Test by:**
 > - Click checkbox → should toggle immediately
 > - Refresh page → state should persist
 > - Check Supabase → completed value should update
+
+---
+
+## External Documentation (llms.txt)
+
+When implementing features, ALWAYS use Context7 MCP to fetch the latest documentation:
+
+**Core Stack:**
+- Next.js 15: `context7 fetch nextjs.org/llms.txt`
+- Supabase: `context7 fetch supabase.com/llms.txt`
+- Tailwind CSS: `context7 fetch tailwindcss.com/llms.txt`
+
+**Auth (next phase):**
+- NextAuth.js v5: `context7 fetch authjs.dev/llms.txt`
+
+**Payments (future):**
+- Stripe: `context7 fetch stripe.com/llms.txt`
+
+**CRITICAL:** Before implementing ANY new feature:
+1. Use Context7 to fetch current docs
+2. Read the relevant sections
+3. Implement following the official patterns
+4. This prevents using outdated APIs or deprecated patterns

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// GET: Obtener todas las tareas
+/** GET /api/tasks - Returns all tasks ordered by creation date descending */
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -21,7 +21,7 @@ export async function GET() {
   }
 }
 
-// POST: Crear una nueva tarea
+/** POST /api/tasks - Creates a new task with the provided title */
 export async function POST(request: Request) {
   try {
     const { title } = await request.json()
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT: Actualizar una tarea (toggle completada, editar título)
+/** PUT /api/tasks - Updates the completion status of a task by ID */
 export async function PUT(request: Request) {
   try {
     const { id, completed } = await request.json()
@@ -89,7 +89,7 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE: Eliminar una tarea
+/** DELETE /api/tasks - Deletes a task by ID */
 export async function DELETE(request: Request) {
   try {
     const { id } = await request.json()

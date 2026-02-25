@@ -73,6 +73,56 @@ interface Task {
 const task: any = { ... }
 ```
 
+### Code Documentation
+- ✅ **Add single-line JSDoc comments** above EVERY function and component
+- ✅ **Explain WHAT it does**, not how (the code shows how)
+- ✅ **Be concise** - one line is enough
+- ✅ **Update comments** when refactoring
+
+**Pattern for functions:**
+```typescript
+/** Fetches all tasks for the current user from Supabase */
+async function getTasks(userId: string) {
+  // implementation
+}
+
+/** Toggles task completion status with optimistic UI update */
+const handleToggle = async (id: string) => {
+  // implementation
+}
+```
+
+**Pattern for components:**
+```typescript
+/** Main task list component with create, toggle, and delete actions */
+export default function TaskList() {
+  // implementation
+}
+
+/** Individual task item with checkbox and delete button */
+const TaskItem = ({ task, onToggle, onDelete }: TaskItemProps) => {
+  // implementation
+}
+```
+
+**Pattern for API routes:**
+```typescript
+/** GET /api/tasks - Returns all tasks for authenticated user */
+export async function GET(request: Request) {
+  // implementation
+}
+
+/** POST /api/tasks - Creates a new task for authenticated user */
+export async function POST(request: Request) {
+  // implementation
+}
+```
+
+**DON'T document:**
+- Obvious utility functions (getters/setters)
+- One-liner arrow functions used inline
+- Auto-generated code
+
 ### React Components
 - ✅ **Functional components only** - No class components
 - ✅ **Arrow functions** - `const Component = () => { ... }`
@@ -132,7 +182,7 @@ return NextResponse.json({ data: tasks }, { status: 200 })
 
 // Error
 return NextResponse.json(
-  { error: 'Task not found' }, 
+  { error: 'Task not found' },
   { status: 404 }
 )
 ```
@@ -209,7 +259,7 @@ git push origin main
 ## Current API Routes
 
 ### GET /api/tasks
-**Purpose:** Fetch all tasks  
+**Purpose:** Fetch all tasks
 **Response:**
 ```json
 [
@@ -223,7 +273,7 @@ git push origin main
 ```
 
 ### POST /api/tasks
-**Purpose:** Create a new task  
+**Purpose:** Create a new task
 **Request body:**
 ```json
 {
@@ -233,7 +283,7 @@ git push origin main
 **Response:** Created task object (status 201)
 
 ### PUT /api/tasks (TODO)
-**Purpose:** Update a task (toggle completion, edit title)  
+**Purpose:** Update a task (toggle completion, edit title)
 **Request body:**
 ```json
 {
@@ -243,7 +293,7 @@ git push origin main
 ```
 
 ### DELETE /api/tasks (TODO)
-**Purpose:** Delete a task  
+**Purpose:** Delete a task
 **Request body:**
 ```json
 {
@@ -277,7 +327,7 @@ const handleCreate = async (title: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title })
   })
-  
+
   if (response.ok) {
     const newTask = await response.json()
     setTasks([...tasks, newTask])
@@ -289,17 +339,17 @@ const handleCreate = async (title: string) => {
 ```typescript
 const handleToggle = async (id: string) => {
   // Update UI immediately
-  setTasks(tasks.map(task => 
+  setTasks(tasks.map(task =>
     task.id === id ? { ...task, completed: !task.completed } : task
   ))
-  
+
   // Then sync with server
   const response = await fetch('/api/tasks', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, completed: true })
   })
-  
+
   // Rollback if failed
   if (!response.ok) {
     setTasks(tasks) // Restore original state
