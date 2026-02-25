@@ -18,8 +18,8 @@ test.describe("Task Manager - Core Operations", () => {
   });
 
   test("should display input field and add button", async ({ page }) => {
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     await expect(input).toBeVisible();
     await expect(button).toBeVisible();
@@ -28,8 +28,8 @@ test.describe("Task Manager - Core Operations", () => {
 
   test("should create a new task", async ({ page }) => {
     const taskTitle = "Test task from Playwright";
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Type task title
     await input.fill(taskTitle);
@@ -39,8 +39,9 @@ test.describe("Task Manager - Core Operations", () => {
     await button.click();
 
     // Verify task appears in the list
-    const taskItem = page.locator("span").filter({ hasText: taskTitle });
-    await expect(taskItem).toBeVisible();
+    const taskItem = page.getByTestId("task-item");
+    const firstTaskTitle = taskItem.first().locator("span").nth(1);
+    await expect(firstTaskTitle).toContainText(taskTitle);
 
     // Verify input is cleared
     await expect(input).toHaveValue("");
@@ -48,8 +49,8 @@ test.describe("Task Manager - Core Operations", () => {
 
   test("should create multiple tasks in correct order", async ({ page }) => {
     const tasks = ["First task", "Second task", "Third task"];
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Create each task
     for (const taskTitle of tasks) {
@@ -58,32 +59,23 @@ test.describe("Task Manager - Core Operations", () => {
       await page.waitForTimeout(100); // Small delay for optimistic update
     }
 
-    // Verify all tasks are visible in reverse order (newest first)
-    const allTasks = page
-      .locator("div")
-      .filter({ hasText: /First task|Second task|Third task/ });
-    const count = await allTasks.count();
+    // Verify all tasks are visible
+    const taskItems = page.getByTestId("task-item");
+    const count = await taskItems.count();
+    expect(count).toBeGreaterThanOrEqual(3);
 
-    // Check that tasks appear in correct order (newest first)
-    const thirdTaskLocator = page
-      .locator("span")
-      .filter({ hasText: "Third task" });
-    const secondTaskLocator = page
-      .locator("span")
-      .filter({ hasText: "Second task" });
+    // Get task titles
+    const firstTaskText = await taskItems.nth(0).textContent();
+    const secondTaskText = await taskItems.nth(1).textContent();
 
-    // Get box positions to verify order
-    const thirdTaskBox = await thirdTaskLocator.first().boundingBox();
-    const secondTaskBox = await secondTaskLocator.first().boundingBox();
-
-    if (thirdTaskBox && secondTaskBox) {
-      expect(thirdTaskBox.y).toBeLessThan(secondTaskBox.y); // Third task should appear before second
-    }
+    // Verify order (newest first)
+    expect(firstTaskText).toContain("Third task");
+    expect(secondTaskText).toContain("Second task");
   });
 
   test("should not create task with empty title", async ({ page }) => {
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Try to submit with empty input
     await input.fill("   ");
@@ -96,16 +88,15 @@ test.describe("Task Manager - Core Operations", () => {
 
   test("should toggle task completion", async ({ page }) => {
     const taskTitle = "Task to complete";
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Create a task
     await input.fill(taskTitle);
     await button.click();
 
     // Find the checkbox for this task
-    const taskRow = page.locator("div").filter({ hasText: taskTitle });
-    const checkbox = taskRow.locator('input[type="checkbox"]');
+    const checkbox = page.getByTestId("task-checkbox").first();
 
     // Verify checkbox is not checked
     await expect(checkbox).not.toBeChecked();
@@ -115,7 +106,8 @@ test.describe("Task Manager - Core Operations", () => {
     await expect(checkbox).toBeChecked();
 
     // Verify task text has strikethrough
-    const taskText = taskRow.locator("span", { hasText: taskTitle });
+    const taskItem = page.getByTestId("task-item").first();
+    const taskText = taskItem.locator("span").nth(1);
     const classes = await taskText.getAttribute("class");
     expect(classes).toContain("line-through");
 
@@ -126,29 +118,37 @@ test.describe("Task Manager - Core Operations", () => {
 
   test("should delete a task", async ({ page }) => {
     const taskTitle = "Task to delete";
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Create a task
     await input.fill(taskTitle);
     await button.click();
 
     // Wait for task to appear
-    const taskRow = page.locator("div").filter({ hasText: taskTitle });
-    await expect(taskRow).toBeVisible();
+    const taskItem = page.getByTestId("task-item").first();
+    await expect(taskItem).toBeVisible();
 
-    // Find delete button (appears on hover)
-    const deleteButton = taskRow.locator('button[aria-label="Eliminar tarea"]');
+    // Find delete button
+    const deleteButton = taskItem.getByTestId("task-delete");
 
     // Hover over task to show delete button
-    await taskRow.hover();
+    await taskItem.hover();
     await expect(deleteButton).toBeVisible();
+
+    // Get initial task count
+    const allTasksBefore = page.getByTestId("task-item");
+    const countBefore = await allTasksBefore.count();
 
     // Click delete button
     await deleteButton.click();
 
     // Verify task is removed
-    await expect(taskRow).not.toBeVisible();
+    await page.waitForTimeout(200);
+    const allTasksAfter = page.getByTestId("task-item");
+    const countAfter = await allTasksAfter.count();
+
+    expect(countAfter).toBe(countBefore - 1);
   });
 
   test("should display empty state when no tasks", async ({ page }) => {
@@ -163,21 +163,19 @@ test.describe("Task Manager - Core Operations", () => {
       await expect(emptyMessage).toBeVisible();
     } else {
       // If there are existing tasks, create and delete one
-      const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-      const button = page.locator("button", { hasText: "Agregar Tarea" });
+      const input = page.getByTestId("task-input");
+      const button = page.getByTestId("add-task-button");
 
       const uniqueTitle = `Temp task ${Date.now()}`;
       await input.fill(uniqueTitle);
       await button.click();
 
-      const taskRow = page.locator("div").filter({ hasText: uniqueTitle });
-      await expect(taskRow).toBeVisible();
+      const taskItem = page.getByTestId("task-item").first();
+      await expect(taskItem).toBeVisible();
 
       // Delete it
-      await taskRow.hover();
-      const deleteButton = taskRow.locator(
-        'button[aria-label="Eliminar tarea"]',
-      );
+      await taskItem.hover();
+      const deleteButton = taskItem.getByTestId("task-delete");
       await deleteButton.click();
 
       // Now empty state should show

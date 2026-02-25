@@ -133,11 +133,13 @@ export default function Home() {
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder='¿Qué necesitas hacer?'
+                data-testid='task-input'
                 className='flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white'
                 disabled={submitting}
               />
               <button
                 type='submit'
+                data-testid='add-task-button'
                 disabled={submitting || !newTaskTitle.trim()}
                 className='px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium'
               >
@@ -165,6 +167,8 @@ export default function Home() {
               {tasks.map((task) => (
                 <div
                   key={task.id}
+                  data-testid={`task-item`}
+                  data-taskid={task.id}
                   className={`flex items-center gap-3 p-4 rounded-lg transition-colors group ${
                     task.completed
                       ? "bg-gray-100 dark:bg-gray-700/50 opacity-60"
@@ -173,6 +177,7 @@ export default function Home() {
                 >
                   <input
                     type='checkbox'
+                    data-testid='task-checkbox'
                     checked={task.completed}
                     onChange={() => handleToggleComplete(task)}
                     className='w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer'
@@ -188,6 +193,7 @@ export default function Home() {
                   </span>
                   <button
                     onClick={() => handleDeleteTask(task)}
+                    data-testid='task-delete'
                     className='text-gray-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1'
                     aria-label='Eliminar tarea'
                   >
@@ -213,19 +219,19 @@ export default function Home() {
           {tasks.length > 0 && (
             <div className='mt-6 pt-6 border-t border-gray-200 dark:border-gray-700'>
               <div className='flex justify-between text-sm text-gray-600 dark:text-gray-400'>
-                <span>
+                <span data-testid='stats-total'>
                   Total:{" "}
                   <strong className='text-gray-800 dark:text-white'>
                     {tasks.length}
                   </strong>
                 </span>
-                <span>
+                <span data-testid='stats-completed'>
                   Completadas:{" "}
                   <strong className='text-green-600 dark:text-green-400'>
                     {tasks.filter((t) => t.completed).length}
                   </strong>
                 </span>
-                <span>
+                <span data-testid='stats-pending'>
                   Pendientes:{" "}
                   <strong className='text-blue-600 dark:text-blue-400'>
                     {tasks.filter((t) => !t.completed).length}

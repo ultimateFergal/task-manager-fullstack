@@ -7,29 +7,32 @@ test.describe("Task Manager - Statistics", () => {
   });
 
   test("should display stats when tasks exist", async ({ page }) => {
-    const input = page.locator('input[placeholder="Que necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Create a task so stats are visible
     await input.fill("Task for stats");
     await button.click();
 
     // Wait for stats to appear
-    const totalLabel = page.locator("text=Total:");
-    await expect(totalLabel).toBeVisible();
+    const statsTotal = page.getByTestId("stats-total");
+    await expect(statsTotal).toBeVisible();
 
     // Verify all stat labels are present
-    await expect(page.locator("text=Completadas:")).toBeVisible();
-    await expect(page.locator("text=Pendientes:")).toBeVisible();
+    const statsCompleted = page.getByTestId("stats-completed");
+    const statsPending = page.getByTestId("stats-pending");
+
+    await expect(statsCompleted).toBeVisible();
+    await expect(statsPending).toBeVisible();
   });
 
   test("should update total count when task is added", async ({ page }) => {
-    const input = page.locator('input[placeholder="¿Qué necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     // Get initial total
-    const totalStatsContainer = page.locator('span:has-text("Total:")');
-    let initialText = await totalStatsContainer.textContent();
+    const statsTotal = page.getByTestId("stats-total");
+    let initialText = await statsTotal.textContent();
     const initialMatch = initialText?.match(/(\d+)/);
     const initialCount = initialMatch ? parseInt(initialMatch[1]) : 0;
 
@@ -41,7 +44,7 @@ test.describe("Task Manager - Statistics", () => {
     await page.waitForTimeout(200);
 
     // Get new total
-    const newText = await totalStatsContainer.textContent();
+    const newText = await statsTotal.textContent();
     const newMatch = newText?.match(/(\d+)/);
     const newCount = newMatch ? parseInt(newMatch[1]) : 0;
 
@@ -49,8 +52,8 @@ test.describe("Task Manager - Statistics", () => {
   });
 
   test("should track completed vs pending tasks", async ({ page }) => {
-    const input = page.locator('input[placeholder="Que necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     const uniqueId = Date.now();
     const task1 = `Task 1 ${uniqueId}`;
@@ -65,45 +68,45 @@ test.describe("Task Manager - Statistics", () => {
     await button.click();
 
     // Verify initial state: 2 pending, 0 completed
-    let pendingText = await page.locator("text=Pendientes:").textContent();
+    const statsPending = page.getByTestId("stats-pending");
+    const statsCompleted = page.getByTestId("stats-completed");
+
+    let pendingText = await statsPending.textContent();
     expect(pendingText).toContain("2");
 
-    let completedText = await page.locator("text=Completadas:").textContent();
+    let completedText = await statsCompleted.textContent();
     expect(completedText).toContain("0");
 
     // Mark first task as completed
-    const taskRow1 = page.locator("div").filter({ hasText: task1 });
-    const checkbox1 = taskRow1.locator('input[type="checkbox"]');
-    await checkbox1.click();
+    const checkboxes = page.getByTestId("task-checkbox");
+    await checkboxes.first().click();
 
     // Wait for UI update
     await page.waitForTimeout(200);
 
     // Verify: 1 pending, 1 completed
-    pendingText = await page.locator("text=Pendientes:").textContent();
+    pendingText = await statsPending.textContent();
     expect(pendingText).toContain("1");
 
-    completedText = await page.locator("text=Completadas:").textContent();
+    completedText = await statsCompleted.textContent();
     expect(completedText).toContain("1");
 
     // Mark second task as completed
-    const taskRow2 = page.locator("div").filter({ hasText: task2 });
-    const checkbox2 = taskRow2.locator('input[type="checkbox"]');
-    await checkbox2.click();
+    await checkboxes.nth(1).click();
 
     await page.waitForTimeout(200);
 
     // Verify: 0 pending, 2 completed
-    pendingText = await page.locator("text=Pendientes:").textContent();
+    pendingText = await statsPending.textContent();
     expect(pendingText).toContain("0");
 
-    completedText = await page.locator("text=Completadas:").textContent();
+    completedText = await statsCompleted.textContent();
     expect(completedText).toContain("2");
   });
 
   test("should update stats when task is deleted", async ({ page }) => {
-    const input = page.locator('input[placeholder="Que necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     const taskTitle = `Task to delete for stats ${Date.now()}`;
 
@@ -112,19 +115,20 @@ test.describe("Task Manager - Statistics", () => {
     await button.click();
 
     // Get total before delete
-    const totalBefore = await page.locator("text=Total:").textContent();
+    const statsTotal = page.getByTestId("stats-total");
+    const totalBefore = await statsTotal.textContent();
     const totalBeforeNum = totalBefore?.match(/(\d+)/)?.[1];
 
     // Delete the task
-    const taskRow = page.locator("div").filter({ hasText: taskTitle });
-    await taskRow.hover();
-    const deleteButton = taskRow.locator('button[aria-label="Eliminar tarea"]');
+    const taskItem = page.getByTestId("task-item").first();
+    await taskItem.hover();
+    const deleteButton = taskItem.getByTestId("task-delete");
     await deleteButton.click();
 
     await page.waitForTimeout(200);
 
     // Get total after delete
-    const totalAfter = await page.locator("text=Total:").textContent();
+    const totalAfter = await statsTotal.textContent();
     const totalAfterNum = totalAfter?.match(/(\d+)/)?.[1];
 
     const before = totalBeforeNum ? parseInt(totalBeforeNum) : 0;
@@ -134,8 +138,8 @@ test.describe("Task Manager - Statistics", () => {
   });
 
   test("should hide stats when no tasks remain", async ({ page }) => {
-    const input = page.locator('input[placeholder="Que necesitas hacer?"]');
-    const button = page.locator("button", { hasText: "Agregar Tarea" });
+    const input = page.getByTestId("task-input");
+    const button = page.getByTestId("add-task-button");
 
     const taskTitle = `Temp task ${Date.now()}`;
 
@@ -144,19 +148,19 @@ test.describe("Task Manager - Statistics", () => {
     await button.click();
 
     // Verify stats are visible
-    await expect(page.locator("text=Total:")).toBeVisible();
+    const statsTotal = page.getByTestId("stats-total");
+    await expect(statsTotal).toBeVisible();
 
     // Delete the task
-    const taskRow = page.locator("div").filter({ hasText: taskTitle });
-    await taskRow.hover();
-    const deleteButton = taskRow.locator('button[aria-label="Eliminar tarea"]');
+    const taskItem = page.getByTestId("task-item").first();
+    await taskItem.hover();
+    const deleteButton = taskItem.getByTestId("task-delete");
     await deleteButton.click();
 
     await page.waitForTimeout(200);
 
     // Stats should be hidden
-    const statsContainer = page.locator('span:has-text("Total:")');
-    const isVisible = await statsContainer.isVisible().catch(() => false);
+    const isVisible = await statsTotal.isVisible().catch(() => false);
     expect(isVisible).toBe(false);
   });
 });
