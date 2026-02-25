@@ -1,7 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("Task Manager - Statistics", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, cleanDatabase }) => {
+    await cleanDatabase;
     await page.goto("/");
     await page.waitForLoadState("networkidle");
   });
