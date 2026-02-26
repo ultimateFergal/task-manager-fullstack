@@ -27,7 +27,7 @@ export async function cleanupDatabase() {
     // Delete all tasks - try multiple times if needed
     let allDeleted = false;
     let attempts = 0;
-    const maxAttempts = 1; // Most of the time it works on first try
+    const maxAttempts = 3; // Try up to 3 times
 
     while (!allDeleted && attempts < maxAttempts) {
       attempts++;
@@ -42,7 +42,7 @@ export async function cleanupDatabase() {
         throw deleteError;
       }
 
-      console.log(`✅ Delete attempt ${attempts}: deleted ${count} tasks`);
+      console.log(`✅ Delete attempt ${attempts}: deleted ${count ?? 0} tasks`);
 
       // Wait before verifying
       await new Promise((resolve) => setTimeout(resolve, 200));

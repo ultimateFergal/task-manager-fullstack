@@ -59,7 +59,7 @@ test.describe("Task Manager - Core Operations", () => {
 
     // Verify task appears in the list
     const taskItem = page.getByTestId("task-item");
-    const firstTaskTitle = taskItem.first().locator("span").nth(1);
+    const firstTaskTitle = taskItem.first().locator("span").first();
     await expect(firstTaskTitle).toContainText(taskTitle);
 
     // Verify input is cleared
@@ -126,7 +126,7 @@ test.describe("Task Manager - Core Operations", () => {
 
     // Verify task text has strikethrough
     const taskItem = page.getByTestId("task-item").first();
-    const taskText = taskItem.locator("span").nth(1);
+    const taskText = taskItem.locator("span").first();
     const classes = await taskText.getAttribute("class");
     expect(classes).toContain("line-through");
 

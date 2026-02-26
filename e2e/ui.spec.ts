@@ -225,7 +225,7 @@ test.describe("Task Manager - UI & Interactions", () => {
 
     const taskItem = page.getByTestId("task-item").first();
     const checkbox = taskItem.getByTestId("task-checkbox");
-    const taskText = taskItem.locator("span").nth(1);
+    const taskText = taskItem.locator("span").first();
 
     // Before completion
     let classes = await taskText.getAttribute("class");
