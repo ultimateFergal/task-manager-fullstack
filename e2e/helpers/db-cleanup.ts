@@ -27,7 +27,7 @@ export async function cleanupDatabase() {
     // Delete all tasks - try multiple times if needed
     let allDeleted = false;
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 1; // Most of the time it works on first try
 
     while (!allDeleted && attempts < maxAttempts) {
       attempts++;
