@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl || "", supabaseServiceKey || "");
 
-/** Deletes all tasks from the test database */
+/** Deletes all tasks from the test database and verifies completion */
 export async function cleanupDatabase() {
   try {
     console.log(
@@ -24,40 +24,55 @@ export async function cleanupDatabase() {
       supabaseUrl ? "✓ URL found" : "✗ URL missing"
     );
 
-    // Delete all tasks
-    const { error: deleteError, count } = await supabase
-      .from("tasks")
-      .delete()
-      .neq("id", "");
+    // Delete all tasks - try multiple times if needed
+    let allDeleted = false;
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    if (deleteError) {
-      console.error("❌ Error cleaning up database:", deleteError);
-      throw deleteError;
+    while (!allDeleted && attempts < maxAttempts) {
+      attempts++;
+
+      const { error: deleteError, count } = await supabase
+        .from("tasks")
+        .delete()
+        .neq("id", "");
+
+      if (deleteError) {
+        console.error(`❌ Delete attempt ${attempts} failed:`, deleteError);
+        throw deleteError;
+      }
+
+      console.log(`✅ Delete attempt ${attempts}: deleted ${count} tasks`);
+
+      // Wait before verifying
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Verify deletion by fetching remaining tasks
+      const { data: remainingTasks, error: fetchError } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact" });
+
+      if (fetchError) {
+        console.warn(`⚠️  Could not verify cleanup on attempt ${attempts}:`, fetchError.message);
+        continue;
+      }
+
+      if (remainingTasks && remainingTasks.length > 0) {
+        console.warn(
+          `⚠️  Attempt ${attempts}: ${remainingTasks.length} tasks still in database. Retrying...`
+        );
+      } else {
+        console.log("✅ Verified: Database is empty");
+        allDeleted = true;
+      }
     }
 
-    console.log(`✅ Database cleaned up successfully (deleted ${count} tasks)`);
-
-    // Verify deletion by fetching remaining tasks
-    const { data: remainingTasks, error: fetchError } = await supabase
-      .from("tasks")
-      .select("id");
-
-    if (fetchError) {
-      console.warn("⚠️  Could not verify cleanup:", fetchError.message);
-      return;
-    }
-
-    if (remainingTasks && remainingTasks.length > 0) {
-      console.warn(
-        `⚠️  Warning: ${remainingTasks.length} tasks still in database after cleanup!`
-      );
-      console.log("Remaining task IDs:", remainingTasks.map((t) => t.id));
-    } else {
-      console.log("✅ Verified: Database is empty");
+    if (!allDeleted && attempts >= maxAttempts) {
+      throw new Error(`Failed to cleanup database after ${maxAttempts} attempts`);
     }
   } catch (error) {
-    console.error("⚠️  Failed to cleanup database:", error);
-    // Don't throw - allow tests to continue even if cleanup fails
+    console.error("❌ Critical: Failed to cleanup database:", error);
+    throw error; // Throw so test fails if cleanup fails
   }
 }
 
@@ -82,4 +97,3 @@ export async function seedTestData() {
     console.error("Failed to seed database:", error);
   }
 }
-
