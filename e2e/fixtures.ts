@@ -1,4 +1,4 @@
-import { test as base, expect } from "@playwright/test";
+import { test as base } from "@playwright/test";
 import { cleanupDatabase } from "./helpers/db-cleanup";
 
 /**
@@ -11,16 +11,16 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  cleanDatabase: async ({}, use) => {
+  cleanDatabase: async ({ cleanDatabase }, use) => {
     // Run cleanup before each test
     await cleanupDatabase();
 
     // Run the test
-    await use();
+    await use(cleanDatabase);
 
     // Optionally cleanup after test as well
     // await cleanupDatabase();
   },
 });
 
-export { expect };
+export { expect } from '@playwright/test';
