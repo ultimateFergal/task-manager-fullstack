@@ -182,7 +182,7 @@ return NextResponse.json({ data: tasks }, { status: 200 })
 
 // Error
 return NextResponse.json(
-  { error: 'Task not found' },
+  { error: 'Task not found' }, 
   { status: 404 }
 )
 ```
@@ -259,7 +259,7 @@ git push origin main
 ## Current API Routes
 
 ### GET /api/tasks
-**Purpose:** Fetch all tasks
+**Purpose:** Fetch all tasks  
 **Response:**
 ```json
 [
@@ -273,7 +273,7 @@ git push origin main
 ```
 
 ### POST /api/tasks
-**Purpose:** Create a new task
+**Purpose:** Create a new task  
 **Request body:**
 ```json
 {
@@ -283,7 +283,7 @@ git push origin main
 **Response:** Created task object (status 201)
 
 ### PUT /api/tasks (TODO)
-**Purpose:** Update a task (toggle completion, edit title)
+**Purpose:** Update a task (toggle completion, edit title)  
 **Request body:**
 ```json
 {
@@ -293,7 +293,7 @@ git push origin main
 ```
 
 ### DELETE /api/tasks (TODO)
-**Purpose:** Delete a task
+**Purpose:** Delete a task  
 **Request body:**
 ```json
 {
@@ -327,7 +327,7 @@ const handleCreate = async (title: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title })
   })
-
+  
   if (response.ok) {
     const newTask = await response.json()
     setTasks([...tasks, newTask])
@@ -339,17 +339,17 @@ const handleCreate = async (title: string) => {
 ```typescript
 const handleToggle = async (id: string) => {
   // Update UI immediately
-  setTasks(tasks.map(task =>
+  setTasks(tasks.map(task => 
     task.id === id ? { ...task, completed: !task.completed } : task
   ))
-
+  
   // Then sync with server
   const response = await fetch('/api/tasks', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, completed: true })
   })
-
+  
   // Rollback if failed
   if (!response.ok) {
     setTasks(tasks) // Restore original state
@@ -359,13 +359,51 @@ const handleToggle = async (id: string) => {
 
 ---
 
-## Testing Checklist
+## Testing
+
+### E2E Testing with Playwright
+
+Comprehensive end-to-end tests cover all critical user flows:
+
+**Run all tests:**
+```bash
+npm run test:e2e
+```
+
+**Test files:**
+- `e2e/tasks.spec.ts` - CRUD operations (create, read, toggle, delete)
+- `e2e/stats.spec.ts` - Counter and statistics updates
+- `e2e/ui.spec.ts` - UI interactions, edge cases, loading states
+
+**Available commands:**
+- `npm run test:e2e` - Run all E2E tests
+- `npm run test:e2e:ui` - Interactive test UI with browser
+- `npm run test:e2e:headed` - Show browser while running
+- `npm run test:e2e:debug` - Debug with Playwright Inspector
+- `npx playwright show-report` - View HTML test report
+
+**What's tested:**
+- Creating, reading, updating (toggle), deleting tasks
+- Task statistics (total, completed, pending)
+- UI interactions (loading, hover, focus, form validation)
+- Edge cases (special characters, long titles, rapid submission)
+- Optimistic UI updates with server sync
+- Empty state display
+- Task ordering and styling
+
+**Configuration:**
+- See `playwright.config.ts` for browser/mobile testing setup
+- Tested on: Chromium, Firefox, WebKit, Pixel 5, iPhone 12
+- Auto-starts dev server before tests run
+
+### Testing Checklist
 
 Before considering a feature complete:
 
 - [ ] Feature works in development (`npm run dev`)
 - [ ] No TypeScript errors (`npm run build`)
 - [ ] No console errors or warnings
+- [ ] E2E tests pass (`npm run test:e2e`)
 - [ ] Database updates correctly (check Supabase dashboard)
 - [ ] UI updates reflect database state
 - [ ] Error states are handled gracefully
@@ -438,6 +476,18 @@ Before considering a feature complete:
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Vercel Deployment Docs](https://vercel.com/docs)
+
+---
+
+## Skills Reference
+
+This project uses specialized skills in `.claude/skills/` organized by category. See [`.claude/README.md`](.claude/README.md) for the full list and usage guide.
+
+| Category | Skills |
+|----------|--------|
+| `core/` | `nextjs-skill`, `tailwind-skill`, `typescript-skill`, `supabase-skill` |
+| `features/` | `auth-skill`, `api-skill` |
+| `practices/` | `documentation-skill`, `error-handling-skill`, `security-skill` |
 
 ---
 
