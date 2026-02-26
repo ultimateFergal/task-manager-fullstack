@@ -3,9 +3,36 @@ import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - UI & Interactions", () => {
   test.beforeEach(async ({ page }) => {
+    // Cleanup database
     await cleanupDatabase();
+
+    // Wait for cleanup to propagate (increased from 500ms)
+    await page.waitForTimeout(1000);
+
+    // Navigate to page
     await page.goto("/");
+
+    // Wait for page to load
     await page.waitForLoadState("networkidle");
+
+    // Wait for React to render
+    await page.waitForTimeout(500);
+
+    // Refresh page to ensure fresh data from API
+    await page.reload();
+
+    // Wait again for page to load with fresh data
+    await page.waitForLoadState("networkidle");
+
+    // Verify database is actually empty
+    const emptyMessage = page.locator("text=No hay tareas");
+    const isEmpty = await emptyMessage.isVisible().catch(() => false);
+
+    if (!isEmpty) {
+      console.warn(
+        "⚠️  Database cleanup may have failed - page shows tasks instead of empty state"
+      );
+    }
   });
 
   test("should show loading spinner initially", async ({ page }) => {

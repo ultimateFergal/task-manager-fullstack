@@ -3,9 +3,36 @@ import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - Statistics", () => {
   test.beforeEach(async ({ page }) => {
+    // Cleanup database
     await cleanupDatabase();
+
+    // Wait for cleanup to propagate (increased from 500ms)
+    await page.waitForTimeout(1000);
+
+    // Navigate to page
     await page.goto("/");
+
+    // Wait for page to load
     await page.waitForLoadState("networkidle");
+
+    // Wait for React to render
+    await page.waitForTimeout(500);
+
+    // Refresh page to ensure fresh data from API
+    await page.reload();
+
+    // Wait again for page to load with fresh data
+    await page.waitForLoadState("networkidle");
+
+    // Verify database is actually empty by checking if empty state shows
+    const emptyMessage = page.locator("text=No hay tareas");
+    const isEmpty = await emptyMessage.isVisible().catch(() => false);
+
+    if (!isEmpty) {
+      console.warn(
+        "⚠️  Database cleanup may have failed - page shows tasks instead of empty state"
+      );
+    }
   });
 
   test("should display stats when tasks exist", async ({ page }) => {
@@ -36,7 +63,7 @@ test.describe("Task Manager - Statistics", () => {
     const statsTotal = page.getByTestId("stats-total");
     let initialText = await statsTotal.textContent();
     const initialMatch = initialText?.match(/(\d+)/);
-    const initialCount = initialMatch ? parseInt(initialMatch[1]) : 0;
+    const initialCount = initialMatch ? Number.parseInt(initialMatch[1]) : 0;
 
     // Add a task
     await input.fill("New task for count");
@@ -48,7 +75,7 @@ test.describe("Task Manager - Statistics", () => {
     // Get new total
     const newText = await statsTotal.textContent();
     const newMatch = newText?.match(/(\d+)/);
-    const newCount = newMatch ? parseInt(newMatch[1]) : 0;
+    const newCount = newMatch ? Number.parseInt(newMatch[1]) : 0;
 
     expect(newCount).toBe(initialCount + 1);
   });

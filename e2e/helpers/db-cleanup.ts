@@ -10,7 +10,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.warn(
-    "⚠️  Test database credentials not found. Make sure to set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.test",
+    "⚠️  Test database credentials not found. Make sure to set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.test"
   );
 }
 
@@ -24,14 +24,37 @@ export async function cleanupDatabase() {
       supabaseUrl ? "✓ URL found" : "✗ URL missing"
     );
 
-    const { error } = await supabase.from("tasks").delete().neq("id", "");
+    // Delete all tasks
+    const { error: deleteError, count } = await supabase
+      .from("tasks")
+      .delete()
+      .neq("id", "");
 
-    if (error) {
-      console.error("❌ Error cleaning up database:", error);
-      throw error;
+    if (deleteError) {
+      console.error("❌ Error cleaning up database:", deleteError);
+      throw deleteError;
     }
 
-    console.log("✅ Database cleaned up successfully");
+    console.log(`✅ Database cleaned up successfully (deleted ${count} tasks)`);
+
+    // Verify deletion by fetching remaining tasks
+    const { data: remainingTasks, error: fetchError } = await supabase
+      .from("tasks")
+      .select("id");
+
+    if (fetchError) {
+      console.warn("⚠️  Could not verify cleanup:", fetchError.message);
+      return;
+    }
+
+    if (remainingTasks && remainingTasks.length > 0) {
+      console.warn(
+        `⚠️  Warning: ${remainingTasks.length} tasks still in database after cleanup!`
+      );
+      console.log("Remaining task IDs:", remainingTasks.map((t) => t.id));
+    } else {
+      console.log("✅ Verified: Database is empty");
+    }
   } catch (error) {
     console.error("⚠️  Failed to cleanup database:", error);
     // Don't throw - allow tests to continue even if cleanup fails
@@ -59,3 +82,4 @@ export async function seedTestData() {
     console.error("Failed to seed database:", error);
   }
 }
+

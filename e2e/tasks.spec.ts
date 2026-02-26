@@ -3,13 +3,36 @@ import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - Core Operations", () => {
   test.beforeEach(async ({ page }) => {
-    // Cleanup database before each test
+    // Cleanup database
     await cleanupDatabase();
+
+    // Wait for cleanup to propagate (increased from 500ms)
+    await page.waitForTimeout(1000);
 
     // Navigate to the home page before each test
     await page.goto("/");
+
     // Wait for tasks to load
     await page.waitForLoadState("networkidle");
+
+    // Wait for React to render
+    await page.waitForTimeout(500);
+
+    // Refresh page to ensure fresh data from API
+    await page.reload();
+
+    // Wait again for page to load with fresh data
+    await page.waitForLoadState("networkidle");
+
+    // Verify database is actually empty
+    const emptyMessage = page.locator("text=No hay tareas");
+    const isEmpty = await emptyMessage.isVisible().catch(() => false);
+
+    if (!isEmpty) {
+      console.warn(
+        "⚠️  Database cleanup may have failed - page shows tasks instead of empty state"
+      );
+    }
   });
 
   test("should load the page and display the task manager header", async ({
