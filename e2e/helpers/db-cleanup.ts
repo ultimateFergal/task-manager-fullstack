@@ -35,7 +35,7 @@ export async function cleanupDatabase() {
       const { error: deleteError, count } = await supabase
         .from("tasks")
         .delete()
-        .neq("id", "");
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // Always true - no UUID matches this
 
       if (deleteError) {
         console.error(`❌ Delete attempt ${attempts} failed:`, deleteError);
