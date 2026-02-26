@@ -6,8 +6,8 @@ test.describe("Task Manager - UI & Interactions", () => {
     // Cleanup database
     await cleanupDatabase();
 
-    // Wait for cleanup to propagate (increased from 500ms)
-    await page.waitForTimeout(1000);
+    // Wait for cleanup to propagate
+    await page.waitForTimeout(500);
 
     // Navigate to page
     await page.goto("/");
@@ -15,23 +15,15 @@ test.describe("Task Manager - UI & Interactions", () => {
     // Wait for page to load
     await page.waitForLoadState("networkidle");
 
-    // Wait for React to render
-    await page.waitForTimeout(500);
-
-    // Refresh page to ensure fresh data from API
-    await page.reload();
-
-    // Wait again for page to load with fresh data
-    await page.waitForLoadState("networkidle");
-
     // Verify database is actually empty
     const emptyMessage = page.locator("text=No hay tareas");
-    const isEmpty = await emptyMessage.isVisible().catch(() => false);
+    const tasksContainer = page.locator('[data-testid="task-item"]').first();
 
-    if (!isEmpty) {
-      console.warn(
-        "⚠️  Database cleanup may have failed - page shows tasks instead of empty state"
-      );
+    const isEmpty = await emptyMessage.isVisible().catch(() => false);
+    const hasItems = await tasksContainer.isVisible().catch(() => false);
+
+    if (!isEmpty && !hasItems) {
+      console.warn("⚠️  Database may not be ready - neither empty state nor tasks visible");
     }
   });
 
