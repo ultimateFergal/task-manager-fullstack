@@ -55,21 +55,23 @@ test.describe("Task Manager - Statistics", () => {
     // First, create a task to make stats visible
     await input.fill("First task to show stats");
     await button.click();
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Wait for stats to appear
     await expect(statsTotal).toBeVisible({ timeout: 5000 });
 
     // Get initial total
-    let initialText = await statsTotal.textContent();
+    const initialText = await statsTotal.textContent();
     const initialMatch = initialText?.match(/(\d+)/);
     const initialCount = initialMatch ? Number.parseInt(initialMatch[1]) : 0;
 
-    // Add another task
+    // Add another task - wait for button enabled then wait for submission to complete
     await input.fill("New task for count");
+    await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
 
-    // Wait a moment for UI update
-    await page.waitForTimeout(200);
+    // Wait for API to return and setTasks to fire (same moment as input clearing)
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Get new total
     const newText = await statsTotal.textContent();
@@ -87,13 +89,16 @@ test.describe("Task Manager - Statistics", () => {
     const task1 = `Task 1 ${uniqueId}`;
     const task2 = `Task 2 ${uniqueId}`;
 
-    // Create first task
+    // Create first task - wait for submission to complete before next fill
     await input.fill(task1);
     await button.click();
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Create second task
     await input.fill(task2);
+    await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Wait for stats to become visible (they only show when there are tasks)
     const statsPending = page.getByTestId("stats-pending");

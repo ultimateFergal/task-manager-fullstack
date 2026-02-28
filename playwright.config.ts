@@ -15,8 +15,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Single worker to avoid race conditions against shared Supabase database */
+  workers: 1,
   /* Test timeout - 60 seconds per test */
   timeout: 60000,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */

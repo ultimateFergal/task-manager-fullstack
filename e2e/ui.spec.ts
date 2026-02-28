@@ -90,14 +90,17 @@ test.describe("Task Manager - UI & Interactions", () => {
     // Create multiple tasks rapidly
     const tasks = ["Task 1", "Task 2", "Task 3", "Task 4", "Task 5"];
 
+    // Wait for each submission to complete before the next fill to avoid React
+    // resetting the input (setNewTaskTitle("")) overwriting Playwright's fill
     for (const taskTitle of tasks) {
+      await expect(input).toHaveValue("", { timeout: 15000 });
       await input.fill(taskTitle);
+      await expect(button).toBeEnabled({ timeout: 10000 });
       await button.click();
-      // Don't wait - submit rapidly
     }
 
-    // Wait for all to be processed
-    await page.waitForTimeout(1000);
+    // Wait for last submission to complete
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Verify all tasks are visible
     const taskItems = page.getByTestId("task-item");
@@ -144,10 +147,11 @@ test.describe("Task Manager - UI & Interactions", () => {
 
     const taskTitle = "   Task with spaces   ";
     await input.fill(taskTitle);
+    await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
 
-    // Wait for creation
-    await page.waitForTimeout(200);
+    // Wait for task to appear
+    await expect(page.getByTestId("task-item").first()).toBeVisible({ timeout: 10000 });
 
     // Should display as "Task with spaces" (trimmed)
     const taskItems = page.getByTestId("task-item");
@@ -158,7 +162,9 @@ test.describe("Task Manager - UI & Interactions", () => {
     expect(taskText?.trim()).toContain("Task with spaces");
   });
 
-  test("should show/hide delete button on hover", async ({ page }) => {
+  test("should show/hide delete button on hover", async ({ page, isMobile }) => {
+    // CSS :hover pseudo-class is not triggered on touch devices
+    test.skip(isMobile, "Hover effects not supported on touch devices");
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
@@ -171,16 +177,17 @@ test.describe("Task Manager - UI & Interactions", () => {
 
     // Initially hidden
     const initialOpacity = await deleteButton.evaluate(
-      (el) => window.getComputedStyle(el).opacity
+      (el) => globalThis.getComputedStyle(el).opacity
     );
-    expect(parseFloat(initialOpacity)).toBeLessThan(1);
+    expect(Number.parseFloat(initialOpacity)).toBeLessThan(1);
 
-    // On hover, should be visible
+    // On hover, should be visible - wait for CSS transition to complete
     await taskItem.hover();
+    await page.waitForTimeout(400);
     const hoverOpacity = await deleteButton.evaluate(
-      (el) => window.getComputedStyle(el).opacity
+      (el) => globalThis.getComputedStyle(el).opacity
     );
-    expect(parseFloat(hoverOpacity)).toBe(1);
+    expect(Number.parseFloat(hoverOpacity)).toBe(1);
   });
 
   test("should maintain task order after toggling completion", async ({
@@ -194,13 +201,21 @@ test.describe("Task Manager - UI & Interactions", () => {
     const task2 = `Task 2 ${taskId}`;
     const task3 = `Task 3 ${taskId}`;
 
-    // Create 3 tasks
+    // Wait for each submission to complete (input clears) before the next fill
     await input.fill(task1);
+    await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
+    await expect(input).toHaveValue("", { timeout: 15000 });
+
     await input.fill(task2);
+    await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
+    await expect(input).toHaveValue("", { timeout: 15000 });
+
     await input.fill(task3);
+    await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Mark middle task as complete
     const checkboxes = page.getByTestId("task-checkbox");
@@ -231,8 +246,9 @@ test.describe("Task Manager - UI & Interactions", () => {
     let classes = await taskText.getAttribute("class");
     expect(classes).not.toContain("line-through");
 
-    // After completion
+    // After completion - wait for optimistic update to render
     await checkbox.click();
+    await expect(taskText).toHaveClass(/line-through/, { timeout: 5000 });
 
     classes = await taskText.getAttribute("class");
     expect(classes).toContain("line-through");

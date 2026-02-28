@@ -71,12 +71,18 @@ test.describe("Task Manager - Core Operations", () => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    // Create each task
+    // Create each task - wait for input to clear (submission complete) before next fill
+    // This prevents React from overwriting the next fill when it resets newTaskTitle
     for (const taskTitle of tasks) {
+      await expect(input).toHaveValue("", { timeout: 15000 });
       await input.fill(taskTitle);
+      await expect(button).toBeEnabled({ timeout: 10000 });
       await button.click();
-      await page.waitForTimeout(100); // Small delay for optimistic update
     }
+
+    // Wait for last submission to complete - task creation is NOT optimistic,
+    // setTasks fires only after the API returns, same time as input clearing
+    await expect(input).toHaveValue("", { timeout: 15000 });
 
     // Verify all tasks are visible
     const taskItems = page.getByTestId("task-item");
@@ -114,6 +120,9 @@ test.describe("Task Manager - Core Operations", () => {
     await input.fill(taskTitle);
     await button.click();
 
+    // Wait for task to appear in DOM before interacting
+    await expect(page.getByTestId("task-item").first()).toBeVisible({ timeout: 10000 });
+
     // Find the checkbox for this task
     const checkbox = page.getByTestId("task-checkbox").first();
 
@@ -122,7 +131,7 @@ test.describe("Task Manager - Core Operations", () => {
 
     // Click checkbox to mark as complete
     await checkbox.click();
-    await expect(checkbox).toBeChecked();
+    await expect(checkbox).toBeChecked({ timeout: 5000 });
 
     // Verify task text has strikethrough
     const taskItem = page.getByTestId("task-item").first();
@@ -187,6 +196,7 @@ test.describe("Task Manager - Core Operations", () => {
 
       const uniqueTitle = `Temp task ${Date.now()}`;
       await input.fill(uniqueTitle);
+      await expect(button).toBeEnabled({ timeout: 10000 });
       await button.click();
 
       const taskItem = page.getByTestId("task-item").first();
