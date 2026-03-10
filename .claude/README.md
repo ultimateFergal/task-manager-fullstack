@@ -11,7 +11,8 @@ This directory contains skills and configuration for Claude Code to work effecti
 ├── skills/
 │   ├── core/           — Stack fundamentals (always apply)
 │   ├── features/       — Feature-specific patterns (apply when relevant)
-│   └── practices/      — Cross-cutting practices (always apply)
+│   ├── practices/      — Cross-cutting practices (always apply)
+│   └── testing/        — Testing patterns by layer
 └── README.md           — This file
 ```
 
@@ -42,6 +43,15 @@ This directory contains skills and configuration for Claude Code to work effecti
 | `documentation-skill.md` | Writing any function or component |
 | `error-handling-skill.md` | Any async operation, API call, or user action |
 | `security-skill.md` | Any input handling, auth check, or DB query |
+
+### testing/ — Apply when writing or modifying tests
+
+| File | When to use |
+|------|-------------|
+| `unit-testing-skill.md` | Writing component tests with Vitest + RTL |
+| `integration-testing-skill.md` | Writing API route tests with mocked Supabase |
+| `e2e-testing-skill.md` | Writing Playwright E2E tests |
+| `testing-conventions-skill.md` | Understanding the test pyramid and naming rules |
 
 ---
 
