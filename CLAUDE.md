@@ -59,7 +59,11 @@ app/page.tsx  →  fetch('/api/tasks')  →  app/api/tasks/route.ts  →  Supaba
 |------|---------|
 | `app/page.tsx` | Entire UI — task list, form, stats (single "use client" component) |
 | `app/api/tasks/route.ts` | All CRUD handlers: GET, POST, PUT, DELETE |
-| `lib/supabase.ts` | Supabase client + exported `Task` type |
+| `lib/supabase.ts` | Supabase anon client + exported `Task` type (for client-side use) |
+| `lib/supabase-server.ts` | Supabase admin client (service_role key, bypasses RLS — server-side only) |
+| `lib/auth.ts` | NextAuth.js v5 config: Google OAuth + Credentials providers, JWT sessions |
+| `lib/auth-utils.ts` | `validateCredentials` and `createUser` — hit Supabase `users` table with bcryptjs |
+| `app/api/auth/[...nextauth]/route.ts` | NextAuth.js catch-all route handler |
 
 ### `Task` Type
 
@@ -70,6 +74,7 @@ export type Task = {
   title: string
   completed: boolean
   created_at: string
+  user_id: string
 }
 ```
 
@@ -90,7 +95,19 @@ All in one file — `app/api/tasks/route.ts`:
 | PUT | Toggle `completed` by `id` | `id` required, `completed` must be boolean |
 | DELETE | Delete task by `id` | `id` required |
 
-Error messages in API routes are in **Spanish** (e.g., `'El título es requerido'`). Match this convention when adding new routes.
+The entire app is in **Spanish** — UI text, inline comments, and API error messages (e.g., `'El título es requerido'`). Match this convention throughout.
+
+### Auth Architecture
+
+Authentication uses **NextAuth.js v5** (configured in `lib/auth.ts`) with two providers:
+- **Google OAuth** — reads `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` automatically
+- **Credentials** — email/password validated against the Supabase `users` table via `lib/auth-utils.ts` (bcryptjs, `supabaseAdmin`)
+
+Sessions use the JWT strategy (required when using the Credentials provider). The JWT `sub` field carries the user ID and is exposed as `session.user.id`. Sign-in page is at `/login`; auth errors also redirect there.
+
+Two Supabase clients exist for different contexts:
+- `supabase` (from `lib/supabase.ts`) — anon key, for client-side use and existing API routes
+- `supabaseAdmin` (from `lib/supabase-server.ts`) — service_role key, bypasses RLS; **only import in server-side code** (API routes, auth-utils); never expose to the client or `NEXT_PUBLIC_` variables
 
 ### UI Patterns
 
@@ -115,7 +132,7 @@ vi.mock('@/lib/supabase', () => ({
 }))
 ```
 
-Component tests (`__tests__/components/`) use `@testing-library/react` + `happy-dom` + `@testing-library/jest-dom`.
+Component tests (`__tests__/components/`) use `@testing-library/react` + `happy-dom` + `@testing-library/jest-dom`. Because `app/page.tsx` is a monolithic component (not split into separate files), component tests define **minimal inline components** that mirror the relevant JSX from the page. Do not import from `app/page.tsx` directly in unit tests. `msw` is also available as a devDependency for fetch mocking when needed.
 
 ### E2E Tests (`e2e/`)
 
@@ -150,6 +167,10 @@ Required in `.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://zyuthilumfrtedrceeqx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<key>
+SUPABASE_SERVICE_ROLE_KEY=<key>        # server-side only, used by supabaseAdmin
+AUTH_SECRET=<random-string>            # NextAuth.js session signing key
+AUTH_GOOGLE_ID=<key>                   # Google OAuth client ID
+AUTH_GOOGLE_SECRET=<key>               # Google OAuth client secret
 ```
 
 Same variables must be set in Vercel dashboard for production/preview deployments.

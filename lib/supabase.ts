@@ -11,4 +11,5 @@ export type Task = {
   title: string
   completed: boolean
   created_at: string
+  user_id: string
 }
