@@ -24,7 +24,7 @@ const mockInsertSelect = vi.fn();
 const mockInsert = vi.fn();
 
 vi.mock("@/lib/supabase-server", () => ({
-  supabaseAdmin: {
+  getSupabaseAdmin: vi.fn(() => ({
     from: vi.fn(() => ({
       insert: mockInsert.mockReturnValue({
         select: mockInsertSelect.mockReturnValue({
@@ -32,7 +32,7 @@ vi.mock("@/lib/supabase-server", () => ({
         }),
       }),
     })),
-  },
+  })),
 }));
 
 // ---------------------------------------------------------------------------

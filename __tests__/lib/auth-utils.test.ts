@@ -1,7 +1,7 @@
 /**
  * Unit tests for lib/auth-utils.ts
  * Covers validateCredentials, createUser, and upsertOAuthUser.
- * Mocks supabaseAdmin and bcryptjs — no real DB or crypto calls.
+ * Mocks getSupabaseAdmin and bcryptjs — no real DB or crypto calls.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -18,7 +18,7 @@ vi.mock("bcryptjs", () => ({
 
 // ---------------------------------------------------------------------------
 // Mock @/lib/supabase-server
-// Each test sets up the mock chain it needs via mockSingle.
+// getSupabaseAdmin returns a mock client; each test sets up the chain via mockSingle.
 // ---------------------------------------------------------------------------
 
 const mockSingle = vi.fn();
@@ -30,7 +30,7 @@ const mockUpsertSelect = vi.fn();
 const mockUpsert = vi.fn();
 
 vi.mock("@/lib/supabase-server", () => ({
-  supabaseAdmin: {
+  getSupabaseAdmin: vi.fn(() => ({
     from: vi.fn(() => ({
       // validateCredentials: from → select → eq → single
       select: mockSelect.mockReturnValue({
@@ -51,7 +51,7 @@ vi.mock("@/lib/supabase-server", () => ({
         }),
       }),
     })),
-  },
+  })),
 }));
 
 // ---------------------------------------------------------------------------

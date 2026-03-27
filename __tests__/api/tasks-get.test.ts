@@ -24,7 +24,7 @@ const mockEq = vi.fn();
 const mockSelect = vi.fn();
 
 vi.mock("@/lib/supabase-server", () => ({
-  supabaseAdmin: {
+  getSupabaseAdmin: vi.fn(() => ({
     from: vi.fn(() => ({
       select: mockSelect.mockReturnValue({
         eq: mockEq.mockReturnValue({
@@ -32,7 +32,7 @@ vi.mock("@/lib/supabase-server", () => ({
         }),
       }),
     })),
-  },
+  })),
 }));
 
 // ---------------------------------------------------------------------------

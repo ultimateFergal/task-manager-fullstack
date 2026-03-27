@@ -24,7 +24,7 @@ const mockEqId = vi.fn();
 const mockDelete = vi.fn();
 
 vi.mock("@/lib/supabase-server", () => ({
-  supabaseAdmin: {
+  getSupabaseAdmin: vi.fn(() => ({
     from: vi.fn(() => ({
       delete: mockDelete.mockReturnValue({
         eq: mockEqId.mockReturnValue({
@@ -32,7 +32,7 @@ vi.mock("@/lib/supabase-server", () => ({
         }),
       }),
     })),
-  },
+  })),
 }));
 
 // ---------------------------------------------------------------------------

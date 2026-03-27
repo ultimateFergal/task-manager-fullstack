@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { supabaseAdmin } from '@/lib/supabase-server'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
 
 
 /** GET /api/tasks - Retorna todas las tareas del usuario autenticado ordenadas por fecha descendente */
@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('tasks')
       .select('*')
       .eq('user_id', session.user.id)
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('tasks')
       .insert([{ title: title.trim(), user_id: session.user.id }])
       .select()
@@ -88,7 +88,7 @@ export async function PUT(request: Request) {
       )
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('tasks')
       .update({ completed })
       .eq('id', id)
@@ -125,7 +125,7 @@ export async function DELETE(request: Request) {
       )
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await getSupabaseAdmin()
       .from('tasks')
       .delete()
       .eq('id', id)

@@ -26,7 +26,7 @@ const mockEqId = vi.fn();
 const mockUpdate = vi.fn();
 
 vi.mock("@/lib/supabase-server", () => ({
-  supabaseAdmin: {
+  getSupabaseAdmin: vi.fn(() => ({
     from: vi.fn(() => ({
       update: mockUpdate.mockReturnValue({
         eq: mockEqId.mockReturnValue({
@@ -38,7 +38,7 @@ vi.mock("@/lib/supabase-server", () => ({
         }),
       }),
     })),
-  },
+  })),
 }));
 
 // ---------------------------------------------------------------------------

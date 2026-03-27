@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs"
-import { supabaseAdmin } from "@/lib/supabase-server"
+import { getSupabaseAdmin } from "@/lib/supabase-server"
 
 interface UserRecord {
   id: string
@@ -16,7 +16,7 @@ export async function validateCredentials(
   email: string,
   password: string
 ): Promise<{ id: string; email: string; name: string | null } | null> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("users")
     .select("id, email, name, password")
     .eq("email", email)
@@ -38,7 +38,7 @@ export async function upsertOAuthUser(
   email: string,
   name: string | null
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("users")
     .upsert({ email, name }, { onConflict: "email" })
     .select("id")
@@ -59,7 +59,7 @@ export async function createUser(
 ): Promise<{ id: string; email: string; name: string } | null> {
   const hashedPassword = await bcrypt.hash(password, 12)
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("users")
     .insert({ email, name, password: hashedPassword })
     .select("id, email, name")
