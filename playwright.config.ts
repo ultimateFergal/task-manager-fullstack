@@ -1,14 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 
-// Load test environment variables
+// Cargar variables de entorno: .env.test como base, .env.local sobreescribe si existe
+// (localmente el servidor corre con .env.local; en CI solo existe .env.test)
 dotenv.config({ path: ".env.test" });
+dotenv.config({ path: ".env.local", override: true });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: "./e2e",
+  /* Setup global auth state before all tests */
+  globalSetup: "./e2e/global-setup.ts",
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -25,6 +29,8 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: "http://localhost:3000",
+    /* Reutilizar sesión autenticada guardada por global-setup */
+    storageState: "e2e/.auth/user.json",
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
   },

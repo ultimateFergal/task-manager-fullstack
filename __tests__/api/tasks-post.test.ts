@@ -1,20 +1,30 @@
 /**
  * Integration tests for POST /api/tasks
- * Mocks the Supabase client so no real DB calls are made.
+ * Mocks supabaseAdmin and the auth session — no real DB or network calls.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/tasks/route";
+import type { Session } from "next-auth";
 
 // ---------------------------------------------------------------------------
-// Mock @/lib/supabase
+// Mock @/lib/auth
+// ---------------------------------------------------------------------------
+
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock @/lib/supabase-server
+// Chain: from → insert → select → single
 // ---------------------------------------------------------------------------
 
 const mockSingle = vi.fn();
 const mockInsertSelect = vi.fn();
 const mockInsert = vi.fn();
 
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
+vi.mock("@/lib/supabase-server", () => ({
+  supabaseAdmin: {
     from: vi.fn(() => ({
       insert: mockInsert.mockReturnValue({
         select: mockInsertSelect.mockReturnValue({
@@ -26,8 +36,15 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Helper — builds a Request with a JSON body
+// Helpers
 // ---------------------------------------------------------------------------
+
+const USER_ID = "user-uuid-123";
+
+const mockSession: Session = {
+  user: { id: USER_ID, email: "test@test.com", name: "Test User" },
+  expires: "2099-01-01",
+};
 
 const makeRequest = (body: unknown) =>
   new Request("http://localhost/api/tasks", {
@@ -41,67 +58,93 @@ const makeRequest = (body: unknown) =>
 // ---------------------------------------------------------------------------
 
 describe("POST /api/tasks", () => {
+  let auth: ReturnType<typeof vi.fn>;
+
   const createdTask = {
     id: "abc-123",
     title: "Nueva tarea",
     completed: false,
     created_at: "2026-02-28T10:00:00Z",
+    user_id: USER_ID,
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const authModule = await import("@/lib/auth");
+    auth = vi.mocked(authModule.auth);
   });
 
-  it("creates a task and returns status 201", async () => {
-    mockSingle.mockResolvedValue({ data: createdTask, error: null });
+  describe("autenticado", () => {
+    beforeEach(() => {
+      auth.mockResolvedValue(mockSession);
+    });
 
-    const response = await POST(makeRequest({ title: "Nueva tarea" }));
-    const body = await response.json();
+    it("creates a task and returns status 201", async () => {
+      mockSingle.mockResolvedValue({ data: createdTask, error: null });
 
-    expect(response.status).toBe(201);
-    expect(body).toEqual(createdTask);
+      const response = await POST(makeRequest({ title: "Nueva tarea" }));
+      const body = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(body).toEqual(createdTask);
+    });
+
+    it("inserts with trimmed title and the authenticated user_id", async () => {
+      mockSingle.mockResolvedValue({ data: createdTask, error: null });
+
+      await POST(makeRequest({ title: "  Nueva tarea  " }));
+
+      expect(mockInsert).toHaveBeenCalledWith([
+        { title: "Nueva tarea", user_id: USER_ID },
+      ]);
+    });
+
+    it("returns status 400 when title is missing", async () => {
+      const response = await POST(makeRequest({}));
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body).toHaveProperty("error");
+      expect(mockSingle).not.toHaveBeenCalled();
+    });
+
+    it("returns status 400 when title is an empty string", async () => {
+      const response = await POST(makeRequest({ title: "" }));
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body).toHaveProperty("error");
+    });
+
+    it("returns status 400 when title is only whitespace", async () => {
+      const response = await POST(makeRequest({ title: "   " }));
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body).toHaveProperty("error");
+    });
+
+    it("returns status 500 when Supabase returns an error", async () => {
+      mockSingle.mockResolvedValue({ data: null, error: { message: "DB error" } });
+
+      const response = await POST(makeRequest({ title: "Tarea" }));
+      const body = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(body).toHaveProperty("error");
+    });
   });
 
-  it("trims whitespace from the title before inserting", async () => {
-    mockSingle.mockResolvedValue({ data: createdTask, error: null });
+  describe("no autenticado", () => {
+    it("returns status 401 when there is no session", async () => {
+      auth.mockResolvedValue(null);
 
-    await POST(makeRequest({ title: "  Nueva tarea  " }));
+      const response = await POST(makeRequest({ title: "Tarea" }));
+      const body = await response.json();
 
-    expect(mockInsert).toHaveBeenCalledWith([{ title: "Nueva tarea" }]);
-  });
-
-  it("returns status 400 when title is missing", async () => {
-    const response = await POST(makeRequest({}));
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body).toHaveProperty("error");
-    expect(mockSingle).not.toHaveBeenCalled();
-  });
-
-  it("returns status 400 when title is an empty string", async () => {
-    const response = await POST(makeRequest({ title: "" }));
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
-
-  it("returns status 400 when title is only whitespace", async () => {
-    const response = await POST(makeRequest({ title: "   " }));
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
-
-  it("returns status 500 when Supabase returns an error", async () => {
-    mockSingle.mockResolvedValue({ data: null, error: { message: "DB error" } });
-
-    const response = await POST(makeRequest({ title: "Tarea" }));
-    const body = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(body).toHaveProperty("error");
+      expect(response.status).toBe(401);
+      expect(body).toHaveProperty("error");
+      expect(mockSingle).not.toHaveBeenCalled();
+    });
   });
 });

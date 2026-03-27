@@ -12,15 +12,10 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  cleanDatabase: async ({ cleanDatabase }, use) => {
-    // Run cleanup before each test
+  // eslint-disable-next-line no-empty-pattern
+  cleanDatabase: async ({}, use) => {
     await cleanupDatabase();
-
-    // Run the test
-    await use(cleanDatabase);
-
-    // Optionally cleanup after test as well
-    // await cleanupDatabase();
+    await use();
   },
 });
 

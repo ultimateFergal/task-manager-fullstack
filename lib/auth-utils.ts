@@ -31,6 +31,24 @@ export async function validateCredentials(
 }
 
 /**
+ * Inserta o actualiza un usuario OAuth en la tabla users (sin contraseña).
+ * Retorna el UUID interno del usuario, creándolo si no existe.
+ */
+export async function upsertOAuthUser(
+  email: string,
+  name: string | null
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .upsert({ email, name }, { onConflict: "email" })
+    .select("id")
+    .single<{ id: string }>()
+
+  if (error) return null
+  return data
+}
+
+/**
  * Crea un nuevo usuario en la tabla users con la contraseña hasheada.
  * Retorna el usuario creado o null si el email ya existe.
  */

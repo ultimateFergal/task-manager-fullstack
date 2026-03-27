@@ -1,50 +1,25 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - Statistics", () => {
   test.beforeEach(async ({ page }) => {
-    // Cleanup database
     await cleanupDatabase();
-
-    // Wait for cleanup to propagate
     await page.waitForTimeout(500);
-
-    // Navigate to page
-    await page.goto("/");
-
-    // Wait for page to load
+    await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
-
-    // Verify database is actually empty by checking if empty state shows or tasks load
-    const emptyMessage = page.locator("text=No hay tareas");
-    const tasksContainer = page.locator('[data-testid="task-item"]').first();
-
-    const isEmpty = await emptyMessage.isVisible().catch(() => false);
-    const hasItems = await tasksContainer.isVisible().catch(() => false);
-
-    if (!isEmpty && !hasItems) {
-      console.warn("⚠️  Database may not be ready - neither empty state nor tasks visible");
-    }
   });
 
   test("should display stats when tasks exist", async ({ page }) => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    // Create a task so stats are visible
     await input.fill("Task for stats");
     await button.click();
 
-    // Wait for stats to appear
     const statsTotal = page.getByTestId("stats-total");
     await expect(statsTotal).toBeVisible();
-
-    // Verify all stat labels are present
-    const statsCompleted = page.getByTestId("stats-completed");
-    const statsPending = page.getByTestId("stats-pending");
-
-    await expect(statsCompleted).toBeVisible();
-    await expect(statsPending).toBeVisible();
+    await expect(page.getByTestId("stats-completed")).toBeVisible();
+    await expect(page.getByTestId("stats-pending")).toBeVisible();
   });
 
   test("should update total count when task is added", async ({ page }) => {
@@ -52,31 +27,22 @@ test.describe("Task Manager - Statistics", () => {
     const button = page.getByTestId("add-task-button");
     const statsTotal = page.getByTestId("stats-total");
 
-    // First, create a task to make stats visible
     await input.fill("First task to show stats");
     await button.click();
     await expect(input).toHaveValue("", { timeout: 15000 });
 
-    // Wait for stats to appear
     await expect(statsTotal).toBeVisible({ timeout: 5000 });
 
-    // Get initial total
     const initialText = await statsTotal.textContent();
-    const initialMatch = initialText?.match(/(\d+)/);
-    const initialCount = initialMatch ? Number.parseInt(initialMatch[1]) : 0;
+    const initialCount = Number.parseInt(initialText?.match(/(\d+)/)?.[1] ?? "0");
 
-    // Add another task - wait for button enabled then wait for submission to complete
     await input.fill("New task for count");
     await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
-
-    // Wait for API to return and setTasks to fire (same moment as input clearing)
     await expect(input).toHaveValue("", { timeout: 15000 });
 
-    // Get new total
     const newText = await statsTotal.textContent();
-    const newMatch = newText?.match(/(\d+)/);
-    const newCount = newMatch ? Number.parseInt(newMatch[1]) : 0;
+    const newCount = Number.parseInt(newText?.match(/(\d+)/)?.[1] ?? "0");
 
     expect(newCount).toBe(initialCount + 1);
   });
@@ -86,102 +52,64 @@ test.describe("Task Manager - Statistics", () => {
     const button = page.getByTestId("add-task-button");
 
     const uniqueId = Date.now();
-    const task1 = `Task 1 ${uniqueId}`;
-    const task2 = `Task 2 ${uniqueId}`;
-
-    // Create first task - wait for submission to complete before next fill
-    await input.fill(task1);
+    await input.fill(`Task 1 ${uniqueId}`);
     await button.click();
     await expect(input).toHaveValue("", { timeout: 15000 });
 
-    // Create second task
-    await input.fill(task2);
+    await input.fill(`Task 2 ${uniqueId}`);
     await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
     await expect(input).toHaveValue("", { timeout: 15000 });
 
-    // Wait for stats to become visible (they only show when there are tasks)
     const statsPending = page.getByTestId("stats-pending");
     const statsCompleted = page.getByTestId("stats-completed");
 
     await expect(statsPending).toBeVisible({ timeout: 5000 });
     await expect(statsCompleted).toBeVisible({ timeout: 5000 });
 
-    // Verify initial state: 2 pending, 0 completed
-    let pendingText = await statsPending.textContent();
-    expect(pendingText).toContain("2");
+    expect(await statsPending.textContent()).toContain("2");
+    expect(await statsCompleted.textContent()).toContain("0");
 
-    let completedText = await statsCompleted.textContent();
-    expect(completedText).toContain("0");
-
-    // Mark first task as completed
     const checkboxes = page.getByTestId("task-checkbox");
     await checkboxes.first().click();
-
-    // Wait for UI update
     await page.waitForTimeout(200);
 
-    // Verify: 1 pending, 1 completed
-    pendingText = await statsPending.textContent();
-    expect(pendingText).toContain("1");
+    expect(await statsPending.textContent()).toContain("1");
+    expect(await statsCompleted.textContent()).toContain("1");
 
-    completedText = await statsCompleted.textContent();
-    expect(completedText).toContain("1");
-
-    // Mark second task as completed
     await checkboxes.nth(1).click();
-
     await page.waitForTimeout(200);
 
-    // Verify: 0 pending, 2 completed
-    pendingText = await statsPending.textContent();
-    expect(pendingText).toContain("0");
-
-    completedText = await statsCompleted.textContent();
-    expect(completedText).toContain("2");
+    expect(await statsPending.textContent()).toContain("0");
+    expect(await statsCompleted.textContent()).toContain("2");
   });
 
   test("should update stats when task is deleted", async ({ page }) => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
-
-    const taskTitle = `Task to delete for stats ${Date.now()}`;
-
-    // Create a task
-    await input.fill(taskTitle);
-    await button.click();
-
-    // Get total before delete
     const statsTotal = page.getByTestId("stats-total");
 
-    // Wait for stats to appear
+    await input.fill(`Task to delete for stats ${Date.now()}`);
+    await button.click();
+
     await expect(statsTotal).toBeVisible({ timeout: 5000 });
+    const totalBefore = Number.parseInt(
+      (await statsTotal.textContent())?.match(/(\d+)/)?.[1] ?? "0"
+    );
 
-    const totalBefore = await statsTotal.textContent();
-    const totalBeforeNum = totalBefore?.match(/(\d+)/)?.[1];
-
-    // Delete the task
     const taskItem = page.getByTestId("task-item").first();
     await taskItem.hover();
-    const deleteButton = taskItem.getByTestId("task-delete");
-    await deleteButton.click();
-
+    await taskItem.getByTestId("task-delete").click();
     await page.waitForTimeout(200);
 
-    // Get total after delete - check if stats still visible
-    const totalAfterVisible = await statsTotal.isVisible().catch(() => false);
-    if (totalAfterVisible) {
-      const totalAfter = await statsTotal.textContent();
-      const totalAfterNum = totalAfter?.match(/(\d+)/)?.[1];
-
-      const before = totalBeforeNum ? Number.parseInt(totalBeforeNum) : 0;
-      const after = totalAfterNum ? Number.parseInt(totalAfterNum) : 0;
-
-      expect(after).toBe(before - 1);
+    const isVisible = await statsTotal.isVisible().catch(() => false);
+    if (isVisible) {
+      const totalAfter = Number.parseInt(
+        (await statsTotal.textContent())?.match(/(\d+)/)?.[1] ?? "0"
+      );
+      expect(totalAfter).toBe(totalBefore - 1);
     } else {
-      // Stats are hidden (no tasks left)
-      const before = totalBeforeNum ? Number.parseInt(totalBeforeNum) : 0;
-      expect(before).toBeGreaterThan(0); // Verify there was at least 1 task
+      expect(totalBefore).toBeGreaterThan(0);
     }
   });
 
@@ -189,26 +117,17 @@ test.describe("Task Manager - Statistics", () => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    const taskTitle = `Temp task ${Date.now()}`;
-
-    // Create a task
-    await input.fill(taskTitle);
+    await input.fill(`Temp task ${Date.now()}`);
     await button.click();
 
-    // Verify stats are visible
     const statsTotal = page.getByTestId("stats-total");
     await expect(statsTotal).toBeVisible();
 
-    // Delete the task
     const taskItem = page.getByTestId("task-item").first();
     await taskItem.hover();
-    const deleteButton = taskItem.getByTestId("task-delete");
-    await deleteButton.click();
-
+    await taskItem.getByTestId("task-delete").click();
     await page.waitForTimeout(200);
 
-    // Stats should be hidden
-    const isVisible = await statsTotal.isVisible().catch(() => false);
-    expect(isVisible).toBe(false);
+    await expect(statsTotal).not.toBeVisible();
   });
 });

@@ -52,10 +52,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
 
   callbacks: {
-    /** Agrega user.id al token JWT en el primer inicio de sesión */
-    async jwt({ token, user }) {
+    /**
+     * Agrega user.id al token JWT en el primer inicio de sesión.
+     * Para Google OAuth, hace upsert en la tabla users y usa el UUID interno.
+     */
+    async jwt({ token, user, account }) {
       if (user?.id) {
-        token.sub = user.id
+        if (account?.provider === "google" && user.email) {
+          // Mapear el ID de Google a un UUID interno en nuestra tabla users
+          const { upsertOAuthUser } = await import("@/lib/auth-utils")
+          const dbUser = await upsertOAuthUser(user.email, user.name ?? null)
+          token.sub = dbUser?.id ?? user.id
+        } else {
+          token.sub = user.id
+        }
       }
       return token
     },

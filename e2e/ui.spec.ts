@@ -1,47 +1,24 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { cleanupDatabase } from "./helpers/db-cleanup";
 
 test.describe("Task Manager - UI & Interactions", () => {
   test.beforeEach(async ({ page }) => {
-    // Cleanup database
     await cleanupDatabase();
-
-    // Wait for cleanup to propagate
     await page.waitForTimeout(500);
-
-    // Navigate to page
-    await page.goto("/");
-
-    // Wait for page to load
+    await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
-
-    // Verify database is actually empty
-    const emptyMessage = page.locator("text=No hay tareas");
-    const tasksContainer = page.locator('[data-testid="task-item"]').first();
-
-    const isEmpty = await emptyMessage.isVisible().catch(() => false);
-    const hasItems = await tasksContainer.isVisible().catch(() => false);
-
-    if (!isEmpty && !hasItems) {
-      console.warn("⚠️  Database may not be ready - neither empty state nor tasks visible");
-    }
   });
 
   test("should show loading spinner initially", async ({ page }) => {
-    // Create a fresh page without waiting for network
     const newPage = await page.context().newPage();
-    const navigationPromise = newPage.goto("/");
+    const navigationPromise = newPage.goto("/dashboard");
 
-    // Check if spinner is visible during loading
     const spinner = newPage.locator("div.animate-spin");
-    const isSpinnerVisible = await spinner.isVisible().catch(() => false);
+    await spinner.isVisible().catch(() => false);
 
-    // Wait for page to load
     await navigationPromise;
 
-    // Spinner should be gone after loading
     await expect(newPage.locator("text=Cargando tareas...")).not.toBeVisible();
-
     await newPage.close();
   });
 
@@ -50,23 +27,11 @@ test.describe("Task Manager - UI & Interactions", () => {
     const button = page.getByTestId("add-task-button");
 
     await input.fill("Test task");
-
-    // Before clicking, button should be enabled
     await expect(button).toBeEnabled();
-
-    // Click button
     await button.click();
 
-    // During submission, input should be disabled
-    const isDisabled = await input.isDisabled().catch(() => false);
-    // May or may not be disabled depending on timing, but button shows submitting state
-
-    // Wait for submission to complete
     await page.waitForTimeout(500);
-
-    // Input should be cleared after submission
-    const value = await input.inputValue();
-    expect(value).toBe("");
+    await expect(input).toHaveValue("");
   });
 
   test("should focus input field after creating task", async ({ page }) => {
@@ -76,10 +41,7 @@ test.describe("Task Manager - UI & Interactions", () => {
     await input.fill("Task 1");
     await button.click();
 
-    // Wait for optimistic update
     await page.waitForTimeout(200);
-
-    // Input should be empty and focused for next entry
     await expect(input).toHaveValue("");
   });
 
@@ -87,11 +49,8 @@ test.describe("Task Manager - UI & Interactions", () => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    // Create multiple tasks rapidly
     const tasks = ["Task 1", "Task 2", "Task 3", "Task 4", "Task 5"];
 
-    // Wait for each submission to complete before the next fill to avoid React
-    // resetting the input (setNewTaskTitle("")) overwriting Playwright's fill
     for (const taskTitle of tasks) {
       await expect(input).toHaveValue("", { timeout: 15000 });
       await input.fill(taskTitle);
@@ -99,10 +58,8 @@ test.describe("Task Manager - UI & Interactions", () => {
       await button.click();
     }
 
-    // Wait for last submission to complete
     await expect(input).toHaveValue("", { timeout: 15000 });
 
-    // Verify all tasks are visible
     const taskItems = page.getByTestId("task-item");
     const count = await taskItems.count();
     expect(count).toBeGreaterThanOrEqual(5);
@@ -116,10 +73,8 @@ test.describe("Task Manager - UI & Interactions", () => {
     await input.fill(specialTask);
     await button.click();
 
-    // Verify task is created and displayed correctly
     const taskItems = page.getByTestId("task-item");
-    const firstTask = taskItems.first();
-    const taskText = await firstTask.textContent();
+    const taskText = await taskItems.first().textContent();
     expect(taskText).toContain("quotes");
   });
 
@@ -131,13 +86,10 @@ test.describe("Task Manager - UI & Interactions", () => {
     await input.fill(longTask);
     await button.click();
 
-    // Wait for creation
     await page.waitForTimeout(200);
 
-    // Verify task is created and visible (may be truncated in display)
     const taskItems = page.getByTestId("task-item");
-    const firstTask = taskItems.first();
-    const taskText = await firstTask.textContent();
+    const taskText = await taskItems.first().textContent();
     expect(taskText).toContain("A");
   });
 
@@ -145,43 +97,32 @@ test.describe("Task Manager - UI & Interactions", () => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    const taskTitle = "   Task with spaces   ";
-    await input.fill(taskTitle);
+    await input.fill("   Task with spaces   ");
     await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
 
-    // Wait for task to appear
     await expect(page.getByTestId("task-item").first()).toBeVisible({ timeout: 10000 });
 
-    // Should display as "Task with spaces" (trimmed)
-    const taskItems = page.getByTestId("task-item");
-    const firstTask = taskItems.first();
-    const taskText = await firstTask.textContent();
-
-    // Should contain the trimmed text
+    const taskText = await page.getByTestId("task-item").first().textContent();
     expect(taskText?.trim()).toContain("Task with spaces");
   });
 
   test("should show/hide delete button on hover", async ({ page, isMobile }) => {
-    // CSS :hover pseudo-class is not triggered on touch devices
     test.skip(isMobile, "Hover effects not supported on touch devices");
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    const taskTitle = `Hover test ${Date.now()}`;
-    await input.fill(taskTitle);
+    await input.fill(`Hover test ${Date.now()}`);
     await button.click();
 
     const taskItem = page.getByTestId("task-item").first();
     const deleteButton = taskItem.getByTestId("task-delete");
 
-    // Initially hidden
     const initialOpacity = await deleteButton.evaluate(
       (el) => globalThis.getComputedStyle(el).opacity
     );
     expect(Number.parseFloat(initialOpacity)).toBeLessThan(1);
 
-    // On hover, should be visible - wait for CSS transition to complete
     await taskItem.hover();
     await page.waitForTimeout(400);
     const hoverOpacity = await deleteButton.evaluate(
@@ -201,7 +142,6 @@ test.describe("Task Manager - UI & Interactions", () => {
     const task2 = `Task 2 ${taskId}`;
     const task3 = `Task 3 ${taskId}`;
 
-    // Wait for each submission to complete (input clears) before the next fill
     await input.fill(task1);
     await expect(button).toBeEnabled({ timeout: 10000 });
     await button.click();
@@ -217,11 +157,9 @@ test.describe("Task Manager - UI & Interactions", () => {
     await button.click();
     await expect(input).toHaveValue("", { timeout: 15000 });
 
-    // Mark middle task as complete
     const checkboxes = page.getByTestId("task-checkbox");
     await checkboxes.nth(1).click();
 
-    // Verify order didn't change (Task 3 still first, Task 2 still second)
     const taskItems = page.getByTestId("task-item");
     const firstTaskText = await taskItems.nth(0).textContent();
     const secondTaskText = await taskItems.nth(1).textContent();
@@ -234,26 +172,22 @@ test.describe("Task Manager - UI & Interactions", () => {
     const input = page.getByTestId("task-input");
     const button = page.getByTestId("add-task-button");
 
-    const taskTitle = `Styling test ${Date.now()}`;
-    await input.fill(taskTitle);
+    await input.fill(`Styling test ${Date.now()}`);
     await button.click();
 
     const taskItem = page.getByTestId("task-item").first();
     const checkbox = taskItem.getByTestId("task-checkbox");
     const taskText = taskItem.locator("span").first();
 
-    // Before completion
     let classes = await taskText.getAttribute("class");
     expect(classes).not.toContain("line-through");
 
-    // After completion - wait for optimistic update to render
     await checkbox.click();
     await expect(taskText).toHaveClass(/line-through/, { timeout: 5000 });
 
     classes = await taskText.getAttribute("class");
     expect(classes).toContain("line-through");
 
-    // Task row should have opacity
     const rowClasses = await taskItem.getAttribute("class");
     expect(rowClasses).toContain("opacity-60");
   });

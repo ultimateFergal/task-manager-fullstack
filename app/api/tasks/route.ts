@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { auth } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase-server'
 
-/** GET /api/tasks - Returns all tasks ordered by creation date descending */
+/** GET /api/tasks - Retorna todas las tareas del usuario autenticado ordenadas por fecha descendente */
 export async function GET() {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('tasks')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -21,8 +28,13 @@ export async function GET() {
   }
 }
 
-/** POST /api/tasks - Creates a new task with the provided title */
+/** POST /api/tasks - Crea una nueva tarea asociada al usuario autenticado */
 export async function POST(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
     const { title } = await request.json()
 
@@ -33,9 +45,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('tasks')
-      .insert([{ title: title.trim() }])
+      .insert([{ title: title.trim(), user_id: session.user.id }])
       .select()
       .single()
 
@@ -51,8 +63,13 @@ export async function POST(request: Request) {
   }
 }
 
-/** PUT /api/tasks - Updates the completion status of a task by ID */
+/** PUT /api/tasks - Actualiza el estado de completado de una tarea del usuario autenticado */
 export async function PUT(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
     const { id, completed } = await request.json()
 
@@ -70,10 +87,11 @@ export async function PUT(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('tasks')
       .update({ completed })
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single()
 
@@ -89,8 +107,13 @@ export async function PUT(request: Request) {
   }
 }
 
-/** DELETE /api/tasks - Deletes a task by ID */
+/** DELETE /api/tasks - Elimina una tarea del usuario autenticado */
 export async function DELETE(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
     const { id } = await request.json()
 
@@ -101,10 +124,11 @@ export async function DELETE(request: Request) {
       )
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('tasks')
       .delete()
       .eq('id', id)
+      .eq('user_id', session.user.id)
 
     if (error) throw error
 

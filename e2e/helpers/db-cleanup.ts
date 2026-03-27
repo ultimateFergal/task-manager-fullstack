@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { TEST_USER_EMAIL } from "./test-constants";
 
 /**
- * Cleanup helper for test database
- * Deletes all tasks before each test to ensure clean state
+ * Cleanup helper para la base de datos de test.
+ * Elimina únicamente las tareas del usuario de prueba E2E para no afectar otros usuarios.
  */
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -16,18 +17,27 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl || "", supabaseServiceKey || "");
 
-/** Deletes all tasks from the test database and verifies completion */
+/** Elimina todas las tareas del usuario de prueba y verifica que la BD quede limpia */
 export async function cleanupDatabase() {
   try {
-    console.log(
-      "🧹 Cleaning up test database...",
-      supabaseUrl ? "✓ URL found" : "✗ URL missing"
-    );
+    console.log("🧹 Cleaning up test database...");
 
-    // Delete all tasks - try multiple times if needed
+    // Obtener el UUID interno del usuario de prueba
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", TEST_USER_EMAIL)
+      .single<{ id: string }>();
+
+    if (userError || !user?.id) {
+      console.warn("⚠️  Test user not found — skipping cleanup");
+      return;
+    }
+
+    // Eliminar solo las tareas de ese usuario
     let allDeleted = false;
     let attempts = 0;
-    const maxAttempts = 3; // Try up to 3 times
+    const maxAttempts = 3;
 
     while (!allDeleted && attempts < maxAttempts) {
       attempts++;
@@ -35,7 +45,7 @@ export async function cleanupDatabase() {
       const { error: deleteError, count } = await supabase
         .from("tasks")
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Always true - no UUID matches this
+        .eq("user_id", user.id);
 
       if (deleteError) {
         console.error(`❌ Delete attempt ${attempts} failed:`, deleteError);
@@ -44,25 +54,22 @@ export async function cleanupDatabase() {
 
       console.log(`✅ Delete attempt ${attempts}: deleted ${count ?? 0} tasks`);
 
-      // Wait before verifying
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Verify deletion by fetching remaining tasks
-      const { data: remainingTasks, error: fetchError } = await supabase
+      const { data: remaining, error: fetchError } = await supabase
         .from("tasks")
-        .select("id", { count: "exact" });
+        .select("id", { count: "exact" })
+        .eq("user_id", user.id);
 
       if (fetchError) {
         console.warn(`⚠️  Could not verify cleanup on attempt ${attempts}:`, fetchError.message);
         continue;
       }
 
-      if (remainingTasks && remainingTasks.length > 0) {
-        console.warn(
-          `⚠️  Attempt ${attempts}: ${remainingTasks.length} tasks still in database. Retrying...`
-        );
+      if (remaining && remaining.length > 0) {
+        console.warn(`⚠️  Attempt ${attempts}: ${remaining.length} tasks still in database. Retrying...`);
       } else {
-        console.log("✅ Verified: Database is empty");
+        console.log("✅ Verified: Database is empty for test user");
         allDeleted = true;
       }
     }
@@ -72,28 +79,6 @@ export async function cleanupDatabase() {
     }
   } catch (error) {
     console.error("❌ Critical: Failed to cleanup database:", error);
-    throw error; // Throw so test fails if cleanup fails
-  }
-}
-
-/** Seeds test database with sample data (optional) */
-export async function seedTestData() {
-  try {
-    const sampleTasks = [
-      { title: "Sample task 1", completed: false },
-      { title: "Sample task 2", completed: false },
-      { title: "Completed sample task", completed: true },
-    ];
-
-    const { error } = await supabase.from("tasks").insert(sampleTasks);
-
-    if (error) {
-      console.error("❌ Error seeding database:", error);
-      throw error;
-    }
-
-    console.log("✅ Database seeded successfully");
-  } catch (error) {
-    console.error("Failed to seed database:", error);
+    throw error;
   }
 }
