@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-server'
 
+export const dynamic = 'force-dynamic'
+
 /** GET /api/tasks - Retorna todas las tareas del usuario autenticado ordenadas por fecha descendente */
 export async function GET() {
   const session = await auth()
