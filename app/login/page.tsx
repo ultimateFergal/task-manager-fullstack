@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 /** Página de inicio de sesión con proveedor de credenciales y Google OAuth */
 export default function LoginPage() {
@@ -10,7 +11,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("registered") === "true") {
+      setSuccess("Cuenta creada exitosamente. Inicia sesión para continuar.");
+    }
+  }, []);
 
   /** Maneja el inicio de sesión con email y contraseña */
   const handleCredentialsSignIn = async (e: React.FormEvent) => {
@@ -55,9 +64,17 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Mensaje de éxito tras registro */}
+        {success && (
+          <p data-testid='success-message' className='text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-4 py-3 mb-6'>
+            {success}
+          </p>
+        )}
+
         {/* Botón Google */}
         <button
           onClick={handleGoogleSignIn}
+          data-testid='google-signin-button'
           className='w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-6'
         >
           <svg className='w-5 h-5' viewBox='0 0 24 24'>
@@ -106,6 +123,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder='tu@email.com'
               required
+              data-testid='email-input'
               className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white'
             />
           </div>
@@ -123,23 +141,32 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder='Mínimo 8 caracteres'
               required
+              data-testid='password-input'
               className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white'
             />
           </div>
 
           {/* Mensaje de error */}
           {error && (
-            <p className='text-sm text-red-600 dark:text-red-400'>{error}</p>
+            <p data-testid='error-message' className='text-sm text-red-600 dark:text-red-400'>{error}</p>
           )}
 
           <button
             type='submit'
             disabled={loading}
+            data-testid='signin-button'
             className='w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium'
           >
             {loading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
         </form>
+
+        <p className='mt-6 text-center text-sm text-gray-600 dark:text-gray-400'>
+          ¿No tienes cuenta?{" "}
+          <Link href='/register' className='text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium'>
+            Regístrate
+          </Link>
+        </p>
       </div>
     </div>
   );

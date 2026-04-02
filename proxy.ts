@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server'
 
 /** Middleware de autenticación — protege /dashboard y /api (excepto /api/auth) */
 export default auth((req) => {
-  // Permitir rutas de NextAuth sin verificación adicional
-  if (req.nextUrl.pathname.startsWith('/api/auth')) {
+  // Permitir rutas públicas sin verificación de sesión
+  const publicApiPaths = ['/api/auth', '/api/register']
+  if (publicApiPaths.some((path) => req.nextUrl.pathname.startsWith(path))) {
     return NextResponse.next()
   }
 

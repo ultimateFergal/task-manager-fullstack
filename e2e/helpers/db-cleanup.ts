@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { TEST_USER_EMAIL } from "./test-constants";
+import { TEST_USER_EMAIL, TEST_REGISTER_EMAIL } from "./test-constants";
 
 /**
  * Cleanup helper para la base de datos de test.
@@ -80,5 +80,24 @@ export async function cleanupDatabase() {
   } catch (error) {
     console.error("❌ Critical: Failed to cleanup database:", error);
     throw error;
+  }
+}
+
+/** Elimina el usuario de prueba de registro y sus tareas asociadas, con reintentos */
+export async function cleanupRegisterUser() {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: user } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", TEST_REGISTER_EMAIL)
+      .maybeSingle<{ id: string }>();
+
+    if (!user) return; // el usuario no existe, nada que limpiar
+
+    await supabase.from("tasks").delete().eq("user_id", user.id);
+    await supabase.from("users").delete().eq("id", user.id);
+
+    // Pequeña pausa para que la BD refleje la eliminación
+    await new Promise((resolve) => setTimeout(resolve, 300));
   }
 }

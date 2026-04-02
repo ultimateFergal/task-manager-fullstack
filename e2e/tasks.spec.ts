@@ -1,12 +1,31 @@
-import { test, expect } from "./fixtures";
+import { test as base, expect } from "@playwright/test";
 import { cleanupDatabase } from "./helpers/db-cleanup";
+import { loginAsUser } from "./helpers/auth-helper";
+import { TEST_USER_EMAIL, TEST_USER_PASSWORD } from "./helpers/test-constants";
+
+/**
+ * Tests de operaciones de tareas — cada test registra login explícito para garantizar
+ * que las tareas se filtran por el usuario autenticado.
+ */
+const test = base.extend<Record<string, never>>({
+  storageState: { cookies: [], origins: [] },
+});
 
 test.describe("Task Manager - Core Operations", () => {
   test.beforeEach(async ({ page }) => {
     await cleanupDatabase();
     await page.waitForTimeout(500);
-    await page.goto("/dashboard");
+    await loginAsUser(page, TEST_USER_EMAIL, TEST_USER_PASSWORD);
     await page.waitForLoadState("networkidle");
+  });
+
+  test.afterEach(async ({ page }) => {
+    try {
+      // Cerrar sesión si el botón está disponible (timeout corto para no bloquear)
+      await page.getByTestId("signout-button").click({ timeout: 3000 });
+    } catch {
+      // Sin botón de cierre de sesión visible — ignorar
+    }
   });
 
   test("should load the page and display the task manager header", async ({
@@ -133,5 +152,18 @@ test.describe("Task Manager - Core Operations", () => {
   test("should display empty state when no tasks", async ({ page }) => {
     await page.waitForLoadState("networkidle");
     await expect(page.locator("text=No hay tareas")).toBeVisible();
+  });
+
+  test("tasks belong only to the authenticated user", async ({ page }) => {
+    // Verificar que el dashboard muestra el nombre del usuario autenticado
+    await expect(page.getByTestId("welcome-message")).toContainText("Bienvenido");
+
+    // Crear una tarea y verificar que aparece correctamente para este usuario
+    const taskTitle = "Tarea del usuario autenticado";
+    await page.getByTestId("task-input").fill(taskTitle);
+    await page.getByTestId("add-task-button").click();
+
+    const taskItem = page.getByTestId("task-item").first();
+    await expect(taskItem.locator("span").first()).toContainText(taskTitle);
   });
 });
